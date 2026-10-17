@@ -41,6 +41,12 @@ public partial class MainWindow : Window
     private void OnSimulationFrameAvailable(SimulationFrame frame)
     {
         // Deliver frame to ScottPlot scope
+        //Hello
         TelemetryScope.AddFrame(in frame);
+    }
+
+    private void PendulumCanvas_Loaded(object sender, RoutedEventArgs e)
+    {
+
     }
 }
