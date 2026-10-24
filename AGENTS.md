@@ -1,6 +1,20 @@
 # DipLabSim — Unified AI Agent Instructions (`AGENTS.md`)
 ---
 
+## Current implementation (open-loop milestone)
+
+The Week 1 text below is historical context. The authorized current scope is:
+- Two independent nonlinear models: Euler–Lagrange and Newton–Euler, with identical physical parameters.
+- Four fixed-step solvers: Forward Euler, Heun, RK4 and Backward Euler (damped Newton solve).
+- Core contracts remain backward compatible; `ITargetedDisturbancePlant` adds lower/upper tip selection.
+- Physics and Engine each reference only Core. WPF UI composes and configures them.
+- Background fixed-step physics publishes to a bounded Channel; WPF drains the latest frame on rendering.
+- Manual cart force and finite horizontal force pulses at either link tip; no active controller in this milestone.
+- Config edits happen while paused. Parameters use report 2 defaults and both angles are absolute from upright.
+- `DipLabSim.Numerics.Tests` runs cross-platform. `DipLabSim.Tests` runs WPF integration on actual STA threads on Windows.
+- MATLAB comparison is still pending; do not claim a MATLAB error bound without a supplied baseline.
+- DLL/gRPC execution, closed-loop 200 Hz control, and hard real-time scheduling are future work.
+
 ## 1. Project Overview & Phased Roadmap
 
 **DipLabSim** is a modular, object-oriented Double Inverted Pendulum on a Cart (DIPC) laboratory simulator built on **.NET 10.0 LTS** (Visual Studio 2026 Community) using **WPF**, **CommunityToolkit.Mvvm**, **SkiaSharp**, and **ScottPlot 5**.

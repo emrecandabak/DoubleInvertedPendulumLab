@@ -6,7 +6,7 @@
         xmlns:views="clr-namespace:DipLabSim.UI.Views"
         xmlns:vm="clr-namespace:DipLabSim.UI.ViewModels"
         mc:Ignorable="d"
-        Title="DipLabSim — Double Inverted Pendulum Laboratory Simulator (Week 1)"
+        Title="DipLabSim — Double Inverted Pendulum Laboratory Simulator — Open Loop"
         Height="850" Width="1300"
         MinHeight="680" MinWidth="1050"
         WindowStartupLocation="CenterScreen"
@@ -77,16 +77,16 @@
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
                         <TextBlock Text="Plant Model:" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12" />
                         <ComboBox ItemsSource="{Binding AvailablePlants}" SelectedItem="{Binding CurrentPlant}"
-                                  DisplayMemberPath="Name" Style="{StaticResource LabComboBox}" Width="230" VerticalAlignment="Center" />
+                                  DisplayMemberPath="Name" IsEnabled="{Binding IsPaused}" Style="{StaticResource LabComboBox}" Width="210" VerticalAlignment="Center" />
                     </StackPanel>
 
-                    <!-- Controller Selector + Discovery Actions -->
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="Controller:" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12" />
-                        <ComboBox ItemsSource="{Binding AvailableControllers}" SelectedItem="{Binding SelectedController}"
-                                  DisplayMemberPath="DisplayName" Style="{StaticResource LabComboBox}" Width="260" VerticalAlignment="Center" />
-                        <Button Content="↻ Refresh" Command="{Binding RefreshControllersCommand}" Style="{StaticResource LabButton}" Margin="4,0,2,0" ToolTip="Rescan ./Controllers folder for .dll plugins" />
-                        <Button Content="📂 Dir" Command="{Binding OpenControllersFolderCommand}" Style="{StaticResource LabButton}" Margin="2,0,0,0" ToolTip="Open ./Controllers folder in Explorer" />
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                        <TextBlock Text="Solver:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ComboBox ItemsSource="{Binding AvailableSolvers}" SelectedItem="{Binding SelectedSolver}"
+                                  DisplayMemberPath="Name" IsEnabled="{Binding IsPaused}" Width="225" Style="{StaticResource LabComboBox}" />
+                        <TextBlock Text="dt [s]:" VerticalAlignment="Center" Margin="8,0,6,0" />
+                        <ComboBox ItemsSource="{Binding AvailableSteps}" SelectedItem="{Binding SelectedStep}"
+                                  IsEnabled="{Binding IsPaused}" Width="80" Style="{StaticResource LabComboBox}" />
                     </StackPanel>
 
                     <!-- Simulation Transport: Play/Pause and Reset -->
@@ -106,7 +106,7 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <Button Content="⏮ Reset" Command="{Binding ResetSimulationCommand}" Style="{StaticResource LabButton}" MinWidth="75" ToolTip="Reset simulation state to zero" />
+                        <Button Content="⏮ Reset" Command="{Binding ResetSimulationCommand}" Style="{StaticResource LabButton}" MinWidth="75" ToolTip="Reset to the initial state with zero velocities" />
                     </StackPanel>
 
                 </WrapPanel>
@@ -134,7 +134,7 @@
 
                     <!-- TAB 1: MODEL PARAMETERS -->
                     <TabItem Header="Plant Parameters" Style="{StaticResource LabTabItem}">
-                        <DockPanel LastChildFill="True">
+                        <DockPanel LastChildFill="True" IsEnabled="{Binding IsPaused}">
 
                             <!-- Model Info Header Banner -->
                             <Border DockPanel.Dock="Top" Background="#11131E" Padding="12,10" 
@@ -194,15 +194,15 @@
                     </TabItem>
 
                     <!-- TAB 2: MANUAL STATE PREVIEW (Week 1 Interactive Test) -->
-                    <TabItem Header="Manual State Preview" Style="{StaticResource LabTabItem}">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,10">
+                    <TabItem Header="Initial State" Style="{StaticResource LabTabItem}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,10" IsEnabled="{Binding IsPaused}">
                             <StackPanel Orientation="Vertical">
 
                                 <!-- Guidance Card -->
                                 <Border Background="#11131E" Padding="10" CornerRadius="4" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="1" Margin="0,0,0,12">
                                     <StackPanel Orientation="Vertical">
-                                        <TextBlock Text="WEEK 1 VISUALIZER TEST" FontWeight="Bold" Foreground="{StaticResource AccentAmberBrush}" FontSize="11" Margin="0,0,0,4" />
-                                        <TextBlock Text="When paused, scrub these sliders to interactively verify coordinate transformations, angle conventions, and live pendulum kinematics on screen." Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" TextWrapping="Wrap" />
+                                        <TextBlock Text="INITIAL STATE — OPEN LOOP" FontWeight="Bold" Foreground="{StaticResource AccentAmberBrush}" FontSize="11" Margin="0,0,0,4" />
+                                        <TextBlock Text="Edit while paused. Reset restores these positions and zero velocities. Perturbed preset demonstrates free fall; exact upright at rest remains an ideal equilibrium." Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Border>
 
@@ -270,6 +270,37 @@
                         </ScrollViewer>
                     </TabItem>
 
+                    <TabItem Header="Forces" Style="{StaticResource LabTabItem}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,10">
+                            <StackPanel>
+                                <TextBlock Text="OPEN-LOOP INPUT" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" />
+                                <TextBlock Text="Cart force [N] — held until Stop / Reset" TextWrapping="Wrap" Margin="0,12,0,4" />
+                                <TextBox Text="{Binding ManualCartForce, UpdateSourceTrigger=LostFocus}" Style="{StaticResource LabTextBox}" />
+                                <Slider Minimum="-30" Maximum="30" Value="{Binding ManualCartForce}" Style="{StaticResource LabSlider}" Margin="0,8" />
+                                <WrapPanel Margin="0,0,0,12">
+                                    <Button Content="Cart ←" Command="{Binding CartLeftCommand}" Style="{StaticResource LabButton}" Margin="0,0,6,0" />
+                                    <Button Content="Stop force" Command="{Binding StopCartForceCommand}" Style="{StaticResource LabButton}" Margin="0,0,6,0" />
+                                    <Button Content="Cart →" Command="{Binding CartRightCommand}" Style="{StaticResource LabButton}" />
+                                </WrapPanel>
+                                <TextBlock Text="LINK DISTURBANCE" FontWeight="Bold" Foreground="{StaticResource AccentAmberBrush}" Margin="0,10,0,8" />
+                                <TextBlock Text="Target (horizontal force at link tip)" TextWrapping="Wrap" />
+                                <ComboBox ItemsSource="{Binding DisturbanceTargets}" SelectedItem="{Binding SelectedDisturbanceTarget}"
+                                          Style="{StaticResource LabComboBox}" Margin="0,6,0,10" />
+                                <TextBlock Text="Force magnitude [N] (0–30)" />
+                                <TextBox Text="{Binding PushMagnitude, UpdateSourceTrigger=LostFocus}" Style="{StaticResource LabTextBox}" Margin="0,4,0,10" />
+                                <TextBlock Text="Duration [s] (0.001–5)" />
+                                <TextBox Text="{Binding PushDuration, UpdateSourceTrigger=LostFocus}" Style="{StaticResource LabTextBox}" Margin="0,4,0,10" />
+                                <WrapPanel IsEnabled="{Binding IsRunning}">
+                                    <Button Content="Push ←" Command="{Binding PushLeftCommand}" Style="{StaticResource LabButton}" Margin="0,0,8,0" />
+                                    <Button Content="Push →" Command="{Binding PushRightCommand}" Style="{StaticResource LabButton}" />
+                                </WrapPanel>
+                                <TextBlock Text="The same magnitude sets the Cart ← / → buttons. A new link push replaces the previous pulse. Duration is rounded up to a whole physics step." TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,12,0,8" FontSize="11" />
+                                <TextBlock Text="{Binding DisturbanceForce, StringFormat='Applied disturbance: {0:F2} N'}" />
+                                <TextBlock Text="Controller: None / Open loop" Margin="0,12,0,0" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
                 </TabControl>
             </Border>
 
@@ -293,6 +324,8 @@
                     <views:PendulumCanvasControl x:Name="PendulumCanvas"
                                                 State="{Binding CurrentState}"
                                                 ControlForceU="{Binding ControlForceU}"
+                                                DisturbanceForce="{Binding DisturbanceForce}"
+                                                DisturbanceTarget="{Binding ActiveDisturbanceTarget}"
                                                 L1="{Binding L1}"
                                                 L2="{Binding L2}" />
                 </Border>

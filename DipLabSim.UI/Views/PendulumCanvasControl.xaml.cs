@@ -25,6 +25,14 @@ public partial class PendulumCanvasControl : UserControl
             typeof(PendulumCanvasControl),
             new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    public static readonly DependencyProperty DisturbanceForceProperty = DependencyProperty.Register(
+        nameof(DisturbanceForce), typeof(double), typeof(PendulumCanvasControl), new FrameworkPropertyMetadata(0.0));
+    public static readonly DependencyProperty DisturbanceTargetProperty = DependencyProperty.Register(
+        nameof(DisturbanceTarget), typeof(DisturbanceTarget), typeof(PendulumCanvasControl),
+        new FrameworkPropertyMetadata(DisturbanceTarget.UpperLinkTip));
+    public double DisturbanceForce { get => (double)GetValue(DisturbanceForceProperty); set => SetValue(DisturbanceForceProperty, value); }
+    public DisturbanceTarget DisturbanceTarget { get => (DisturbanceTarget)GetValue(DisturbanceTargetProperty); set => SetValue(DisturbanceTargetProperty, value); }
+
     public static readonly DependencyProperty L1Property =
         DependencyProperty.Register(
             nameof(L1),
@@ -162,7 +170,7 @@ public partial class PendulumCanvasControl : UserControl
 
         // 2. Compute coordinate mapping
         float centerX = width * 0.5f;
-        float trackY = height * 0.68f;
+        float trackY = height * 0.52f;
 
         // Scale: fit 3.5m track width and max rod reach
         double l1 = Math.Max(0.05, L1);
@@ -170,9 +178,11 @@ public partial class PendulumCanvasControl : UserControl
         double totalReach = l1 + l2;
 
         float horizScale = width / 3.8f;
-        float vertScale = (trackY - 60f) / (float)(totalReach * 1.35);
+        float vertScale = (height * 0.43f - 30f) / (float)totalReach;
         float scale = Math.Min(horizScale, vertScale);
-        if (scale < 80f) scale = 80f;
+        scale = Math.Max(10f, scale);
+        // Follow the cart once it leaves the central viewport; no physical rail stops are modelled.
+        if (Math.Abs(State.X) > 1.0) centerX -= (float)(State.X * scale);
 
         // 3. Draw grid lines
         DrawGrid(canvas, width, height, centerX, trackY, scale);
@@ -351,6 +361,16 @@ public partial class PendulumCanvasControl : UserControl
         // Tip 2 Bob / Indicator
         canvas.DrawCircle(tip2ScreenX, tip2ScreenY, 9f, _tipGlowPaint);
         canvas.DrawCircle(tip2ScreenX, tip2ScreenY, 5f, _tipPaint);
+        if (Math.Abs(DisturbanceForce) > 0.001)
+        {
+            float px = DisturbanceTarget == DisturbanceTarget.LowerLinkTip ? j1ScreenX : tip2ScreenX;
+            float py = DisturbanceTarget == DisturbanceTarget.LowerLinkTip ? j1ScreenY : tip2ScreenY;
+            float length = (float)Math.CopySign(Math.Clamp(Math.Abs(DisturbanceForce) * 12, 25, 100), DisturbanceForce);
+            float end = px + length, direction = Math.Sign(length);
+            canvas.DrawLine(px, py, end, py, _forceArrowPaint);
+            canvas.DrawLine(end, py, end - direction * 9, py - 6, _forceArrowPaint);
+            canvas.DrawLine(end, py, end - direction * 9, py + 6, _forceArrowPaint);
+        }
     }
 
     private void DrawHud(
@@ -371,7 +391,7 @@ public partial class PendulumCanvasControl : UserControl
         canvas.DrawRoundRect(hudRect, 8f, 8f, _hudBorderPaint);
 
         // Title
-        canvas.DrawText("REAL-TIME KINEMATICS", hudX + 14f, hudY + 22f, _fontHudBold, _hudAccentPaint);
+        canvas.DrawText("OPEN-LOOP PHYSICS", hudX + 14f, hudY + 22f, _fontHudBold, _hudAccentPaint);
         canvas.DrawLine(hudX + 14f, hudY + 28f, hudX + hudW - 14f, hudY + 28f, _hudBorderPaint);
 
         float rowY = hudY + 46f;

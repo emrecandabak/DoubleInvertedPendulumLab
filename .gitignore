@@ -29,3 +29,6 @@ TestResults/
 ## Crash dumps
 *.dmp
 *.dump
+
+## WPF temporary projects
+*_wpftmp.csproj
