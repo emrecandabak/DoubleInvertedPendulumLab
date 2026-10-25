@@ -27,11 +27,49 @@ public class EngineTests
         Assert.True(Math.Abs(loop.PausedState.Theta1) > 0);
     }
     [Fact]
+    public void CartPulseExpiresAtFixedStepBoundary()
+    {
+        var p = new NonlinearEulerLagrangePlant();
+        using var loop = new SimulationLoop(p, new Rk4Solver());
+        loop.PulseCart(4.5, 0.0025); // rounds to 3 x 1ms
+        for (int i = 0; i < 5; i++)
+        {
+            loop.StepOnce();
+            Assert.True(loop.Frames.TryRead(out var frame));
+            Assert.Equal(i < 3 ? 4.5 : 0, frame.ControlForceU);
+        }
+        Assert.True(Math.Abs(loop.PausedState.X) > 0);
+    }
+    [Fact]
+    public void CartBoundaryEnforcesLimitAndZerosInwardVelocity()
+    {
+        var p = new NonlinearEulerLagrangePlant();
+        using var loop = new SimulationLoop(p, new Rk4Solver());
+        loop.SetState(PendulumState.Zero with { X = 1.799, Dx = 2.0 });
+        loop.ManualForce = 30;
+        loop.StepOnce();
+        Assert.Equal(1.8, loop.PausedState.X, 4);
+        Assert.Equal(0, loop.PausedState.Dx, 4);
+
+        for (int i = 0; i < 200; i++)
+        {
+            loop.StepOnce();
+            Assert.True(loop.PausedState.X <= 1.8 + 1e-9);
+            Assert.True(loop.PausedState.X >= -1.8 - 1e-9);
+        }
+
+        loop.ManualForce = -30;
+        loop.StepOnce();
+        Assert.True(loop.PausedState.X < 1.8);
+        Assert.True(loop.PausedState.Dx < 0);
+    }
+    [Fact]
     public void ResetClearsQueuedPulseAndCartForce()
     {
         using var loop = new SimulationLoop(new NonlinearEulerLagrangePlant(), new Rk4Solver());
         loop.ManualForce = 3;
         loop.Push(DisturbanceTarget.UpperLinkTip, 5, 1);
+        loop.PulseCart(4, 1);
         loop.SetState(PendulumState.Zero);
         while (loop.Frames.TryRead(out _)) { }
         loop.StepOnce();

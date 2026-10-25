@@ -35,6 +35,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private double _manualX;
     [ObservableProperty] private double _manualTheta1 = 0.05;
     [ObservableProperty] private double _manualTheta2 = -0.03;
+    [ObservableProperty] private double _cartForce = 5;
+    [ObservableProperty] private double _cartPulseDuration = 0.1;
     [ObservableProperty] private double _manualCartForce;
     [ObservableProperty] private double _pushMagnitude = 2;
     [ObservableProperty] private double _pushDuration = 0.1;
@@ -91,6 +93,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnSelectedSolverChanged(IOdeSolver value) => Configure();
     partial void OnSelectedStepChanged(double value) => Configure();
     partial void OnSelectedSpeedChanged(double value) => _simulation.SpeedMultiplier = value;
+    partial void OnCartForceChanged(double value)
+    {
+        if (!double.IsFinite(value)) { CartForce = 5; return; }
+        double clamped = Math.Clamp(Math.Abs(value), 0, 30);
+        if (clamped != value) CartForce = clamped;
+    }
+    partial void OnCartPulseDurationChanged(double value)
+    {
+        if (!double.IsFinite(value)) { CartPulseDuration = 0.1; return; }
+        double clamped = Math.Clamp(value, 0.001, 5);
+        if (clamped != value) CartPulseDuration = clamped;
+    }
     partial void OnManualCartForceChanged(double value)
     {
         if (!double.IsFinite(value)) { ManualCartForce = 0; return; }
@@ -98,7 +112,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (bounded != value) { ManualCartForce = bounded; return; }
         _simulation.ManualForce = bounded;
     }
-    partial void OnManualXChanged(double value) => UpdateManualState();
+    partial void OnManualXChanged(double value)
+    {
+        if (double.IsFinite(value) && Math.Abs(value) > 1.8) { ManualX = Math.Clamp(value, -1.8, 1.8); return; }
+        UpdateManualState();
+    }
     partial void OnManualTheta1Changed(double value) { OnPropertyChanged(nameof(ManualTheta1Deg)); UpdateManualState(); }
     partial void OnManualTheta2Changed(double value) { OnPropertyChanged(nameof(ManualTheta2Deg)); UpdateManualState(); }
 
@@ -149,8 +167,20 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         StatusMessage = "Reset to initial state (zero velocities); Play to simulate";
     }
     [RelayCommand] private void StopCartForce() => ManualCartForce = 0;
-    [RelayCommand] private void CartLeft() => ManualCartForce = -Math.Abs(ValidMagnitude());
-    [RelayCommand] private void CartRight() => ManualCartForce = Math.Abs(ValidMagnitude());
+    [RelayCommand] private void CartLeft() => ManualCartForce = -ValidCartForce();
+    [RelayCommand] private void CartRight() => ManualCartForce = ValidCartForce();
+    [RelayCommand] private void PulseCartLeft() => ApplyCartPulse(-1);
+    [RelayCommand] private void PulseCartRight() => ApplyCartPulse(1);
+    private void ApplyCartPulse(int sign)
+    {
+        if (!IsRunning) { StatusMessage = "Press Play before applying a momentary cart force."; return; }
+        double force = sign * ValidCartForce();
+        double duration = ValidCartPulseDuration();
+        _simulation.PulseCart(force, duration);
+        StatusMessage = $"Momentary cart force: {force:F2} N, {duration:F3} s";
+    }
+    private double ValidCartForce() => double.IsFinite(CartForce) ? Math.Clamp(Math.Abs(CartForce), 0, 30) : 5;
+    private double ValidCartPulseDuration() => double.IsFinite(CartPulseDuration) ? Math.Clamp(CartPulseDuration, 0.001, 5) : 0.1;
     [RelayCommand] private void PushLeft() => ApplyPush(-1);
     [RelayCommand] private void PushRight() => ApplyPush(1);
     private double ValidMagnitude() => double.IsFinite(PushMagnitude) ? Math.Clamp(PushMagnitude, 0, 30) : 2;

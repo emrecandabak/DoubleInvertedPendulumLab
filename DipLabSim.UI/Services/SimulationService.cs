@@ -44,6 +44,7 @@ public sealed class SimulationService : IDisposable
         Drain();
     }
     public void Push(DisturbanceTarget target, double force, double seconds) => _engine.Push(target, force, seconds);
+    public void PulseCart(double force, double seconds) => _engine.PulseCart(force, seconds);
     private void OnRendering(object? sender, EventArgs e)
     {
         Drain();

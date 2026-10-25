@@ -78,4 +78,37 @@ public class UiAcceptanceTests
         length.ValueString = "NaN";
         Assert.Equal(0.1, length.Value);
     });
+    [Fact]
+    public void CartForceSliderOnlySetsForceForButtonsAndDoesNotApplyDirectly() => Sta(() =>
+    {
+        using var vm = new MainViewModel();
+        Assert.Equal(5, vm.CartForce);
+        Assert.Equal(0, vm.ManualCartForce);
+        vm.CartForce = 12;
+        Assert.Equal(0, vm.ManualCartForce);
+
+        vm.CartLeftCommand.Execute(null);
+        Assert.Equal(-12, vm.ManualCartForce);
+
+        vm.CartRightCommand.Execute(null);
+        Assert.Equal(12, vm.ManualCartForce);
+
+        vm.StopCartForceCommand.Execute(null);
+        Assert.Equal(0, vm.ManualCartForce);
+    });
+    [Fact]
+    public void MomentaryCartForceCommandsRequireRunningAndApplyPulse() => Sta(() =>
+    {
+        using var vm = new MainViewModel();
+        vm.PulseCartLeftCommand.Execute(null);
+        Assert.Contains("Press Play", vm.StatusMessage);
+        vm.TogglePlayPauseCommand.Execute(null);
+        Assert.True(vm.IsRunning);
+        vm.PulseCartLeftCommand.Execute(null);
+        Assert.Contains("Momentary cart force", vm.StatusMessage);
+        vm.PulseCartLeftCommand.Execute(null);
+        Assert.Contains("Momentary cart force", vm.StatusMessage);
+        vm.PulseCartRightCommand.Execute(null);
+        Assert.Contains("Momentary cart force", vm.StatusMessage);
+    });
 }

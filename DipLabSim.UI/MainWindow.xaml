@@ -222,10 +222,10 @@
                                             <TextBlock Text="Cart Position (x):" Foreground="{StaticResource TextPrimaryBrush}" FontWeight="SemiBold" FontSize="11" DockPanel.Dock="Left" />
                                             <TextBlock Text="{Binding ManualX, StringFormat='{}{0:+0.000;-0.000;0.000} m'}" Foreground="{StaticResource AccentCyanBrush}" FontFamily="Consolas" FontWeight="Bold" FontSize="12" DockPanel.Dock="Right" />
                                         </DockPanel>
-                                        <Slider Minimum="-2.0" Maximum="2.0" SmallChange="0.01" LargeChange="0.1" Value="{Binding ManualX}" Style="{StaticResource LabSlider}" Margin="0,6,0,0" />
+                                        <Slider Minimum="-1.8" Maximum="1.8" SmallChange="0.01" LargeChange="0.1" Value="{Binding ManualX}" Style="{StaticResource LabSlider}" Margin="0,6,0,0" />
                                         <DockPanel LastChildFill="False" Margin="0,2,0,0">
-                                            <TextBlock Text="-2.0 m" Foreground="{StaticResource TextMutedBrush}" FontSize="9" DockPanel.Dock="Left" />
-                                            <TextBlock Text="+2.0 m" Foreground="{StaticResource TextMutedBrush}" FontSize="9" DockPanel.Dock="Right" />
+                                            <TextBlock Text="-1.8 m" Foreground="{StaticResource TextMutedBrush}" FontSize="9" DockPanel.Dock="Left" />
+                                            <TextBlock Text="+1.8 m" Foreground="{StaticResource TextMutedBrush}" FontSize="9" DockPanel.Dock="Right" />
                                         </DockPanel>
                                     </StackPanel>
                                 </Border>
@@ -273,28 +273,41 @@
                     <TabItem Header="Forces" Style="{StaticResource LabTabItem}">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,10">
                             <StackPanel>
-                                <TextBlock Text="OPEN-LOOP INPUT" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" />
-                                <TextBlock Text="Cart force [N] — held until Stop / Reset" TextWrapping="Wrap" Margin="0,12,0,4" />
-                                <TextBox Text="{Binding ManualCartForce, UpdateSourceTrigger=LostFocus}" Style="{StaticResource LabTextBox}" />
-                                <Slider Minimum="-30" Maximum="30" Value="{Binding ManualCartForce}" Style="{StaticResource LabSlider}" Margin="0,8" />
+                                <TextBlock Text="CART FORCE (OPEN LOOP)" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" />
+                                <DockPanel Margin="0,10,0,4">
+                                    <TextBlock Text="Cart force [N]:" Foreground="{StaticResource TextPrimaryBrush}" FontSize="11" FontWeight="SemiBold" DockPanel.Dock="Left" />
+                                    <TextBlock Text="{Binding CartForce, StringFormat='{}{0:F1} N'}" Foreground="{StaticResource AccentCyanBrush}" FontFamily="Consolas" FontWeight="Bold" FontSize="11" DockPanel.Dock="Right" />
+                                </DockPanel>
+                                <TextBox Text="{Binding CartForce, UpdateSourceTrigger=LostFocus}" Style="{StaticResource LabTextBox}" />
+                                <Slider Minimum="0" Maximum="30" SmallChange="0.5" LargeChange="2" Value="{Binding CartForce}" Style="{StaticResource LabSlider}" Margin="0,6,0,10" />
+                                <TextBlock Text="Continuous cart force (held until Stop / Reset)" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,2,0,4" />
                                 <WrapPanel Margin="0,0,0,12">
                                     <Button Content="Cart ←" Command="{Binding CartLeftCommand}" Style="{StaticResource LabButton}" Margin="0,0,6,0" />
                                     <Button Content="Stop force" Command="{Binding StopCartForceCommand}" Style="{StaticResource LabButton}" Margin="0,0,6,0" />
-                                    <Button Content="Cart →" Command="{Binding CartRightCommand}" Style="{StaticResource LabButton}" />
+                                    <Button Content="Cart →" Command="{Binding CartRightCommand}" Style="{StaticResource LabButton}" ToolTip="Apply continuous force to the right" />
+                                </WrapPanel>
+                                <TextBlock Text="{Binding ManualCartForce, StringFormat='Applied continuous cart force: {0:F2} N'}" Foreground="{StaticResource TextMutedBrush}" FontSize="11" Margin="0,0,0,12" />
+
+                                <TextBlock Text="Momentary cart pulse" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,2,0,4" />
+                                <TextBlock Text="Pulse duration [s] (0.001–5)" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,2" />
+                                <TextBox Text="{Binding CartPulseDuration, UpdateSourceTrigger=LostFocus}" Style="{StaticResource LabTextBox}" Margin="0,0,0,8" />
+                                <WrapPanel Margin="0,0,0,14" IsEnabled="{Binding IsRunning}">
+                                    <Button Content="Pulse Cart ←" Command="{Binding PulseCartLeftCommand}" Style="{StaticResource LabButton}" Margin="0,0,6,0" ToolTip="Apply momentary pulse to the left" />
+                                    <Button Content="Pulse Cart →" Command="{Binding PulseCartRightCommand}" Style="{StaticResource LabButton}" ToolTip="Apply momentary pulse to the right" />
                                 </WrapPanel>
                                 <TextBlock Text="LINK DISTURBANCE" FontWeight="Bold" Foreground="{StaticResource AccentAmberBrush}" Margin="0,10,0,8" />
                                 <TextBlock Text="Target (horizontal force at link tip)" TextWrapping="Wrap" />
                                 <ComboBox ItemsSource="{Binding DisturbanceTargets}" SelectedItem="{Binding SelectedDisturbanceTarget}"
                                           Style="{StaticResource LabComboBox}" Margin="0,6,0,10" />
-                                <TextBlock Text="Force magnitude [N] (0–30)" />
+                                <TextBlock Text="Link force magnitude [N] (0–30)" />
                                 <TextBox Text="{Binding PushMagnitude, UpdateSourceTrigger=LostFocus}" Style="{StaticResource LabTextBox}" Margin="0,4,0,10" />
-                                <TextBlock Text="Duration [s] (0.001–5)" />
+                                <TextBlock Text="Link push duration [s] (0.001–5)" />
                                 <TextBox Text="{Binding PushDuration, UpdateSourceTrigger=LostFocus}" Style="{StaticResource LabTextBox}" Margin="0,4,0,10" />
                                 <WrapPanel IsEnabled="{Binding IsRunning}">
                                     <Button Content="Push ←" Command="{Binding PushLeftCommand}" Style="{StaticResource LabButton}" Margin="0,0,8,0" />
                                     <Button Content="Push →" Command="{Binding PushRightCommand}" Style="{StaticResource LabButton}" />
                                 </WrapPanel>
-                                <TextBlock Text="The same magnitude sets the Cart ← / → buttons. A new link push replaces the previous pulse. Duration is rounded up to a whole physics step." TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,12,0,8" FontSize="11" />
+                                <TextBlock Text="Cart buttons use the Cart force slider above. Link push buttons use the Link magnitude below. Pulse durations are rounded up to whole physics steps." TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,12,0,8" FontSize="11" />
                                 <TextBlock Text="{Binding DisturbanceForce, StringFormat='Applied disturbance: {0:F2} N'}" />
                                 <TextBlock Text="Controller: None / Open loop" Margin="0,12,0,0" />
                             </StackPanel>

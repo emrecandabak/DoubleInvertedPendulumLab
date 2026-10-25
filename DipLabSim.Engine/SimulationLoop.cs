@@ -20,6 +20,9 @@ public sealed class SimulationLoop : IDisposable
     private bool _pulsePending;
     private double _pulseForce, _pulseUntil;
     private DisturbanceTarget _pulseTarget;
+    private double _pendingCartPulseForce, _pendingCartPulseDuration;
+    private bool _cartPulsePending;
+    private double _cartPulseForce, _cartPulseUntil;
     private IPlant _plant;
     private IOdeSolver _solver;
     private PendulumState _state;
@@ -76,11 +79,25 @@ public sealed class SimulationLoop : IDisposable
         }
     }
 
+    public void PulseCart(double force, double duration)
+    {
+        if (!double.IsFinite(force) || Math.Abs(force) > 100 || !double.IsFinite(duration) || duration <= 0 || duration > 5)
+            throw new ArgumentOutOfRangeException(nameof(force));
+        lock (_inputGate)
+        {
+            _pendingCartPulseForce = force;
+            _pendingCartPulseDuration = duration;
+            _cartPulsePending = true;
+        }
+    }
+
+    public const double CartBoundary = 1.8;
+
     public void SetState(in PendulumState state)
     {
         EnsurePaused();
         if (!IsFinite(state)) throw new ArgumentOutOfRangeException(nameof(state));
-        _state = state;
+        _state = state with { X = Math.Clamp(state.X, -CartBoundary, CartBoundary) };
         ClearInputs();
         Volatile.Write(ref _fault, null);
         Publish(0, 0);
@@ -150,14 +167,25 @@ public sealed class SimulationLoop : IDisposable
                 _pulseUntil = _state.Time + Math.Ceiling(_pendingPulseDuration / _dt) * _dt;
                 _pulsePending = false;
             }
+            if (_cartPulsePending)
+            {
+                _cartPulseForce = _pendingCartPulseForce;
+                _cartPulseUntil = _state.Time + Math.Ceiling(_pendingCartPulseDuration / _dt) * _dt;
+                _cartPulsePending = false;
+            }
         }
         double force = _state.Time < _pulseUntil - _dt * 1e-6 ? _pulseForce : 0;
         if (_plant is ITargetedDisturbancePlant targeted) targeted.DisturbanceTarget = _pulseTarget;
-        double u = ManualForce;
+        double cartPulse = _state.Time < _cartPulseUntil - _dt * 1e-6 ? _cartPulseForce : 0;
+        double u = ManualForce + cartPulse;
         var next = _solver.Step(_plant, _state, u, force, _dt);
         if (!IsFinite(next) || Math.Abs(next.X) > 100 || Math.Abs(next.Dx) > 1000
             || Math.Abs(next.DTheta1) > 10000 || Math.Abs(next.DTheta2) > 10000)
             throw new ArithmeticException("Simulation exceeded numerical/display limits. Reduce step or force, then reset.");
+        if (next.X >= CartBoundary)
+            next = next with { X = CartBoundary, Dx = next.Dx > 0 ? 0 : next.Dx };
+        else if (next.X <= -CartBoundary)
+            next = next with { X = -CartBoundary, Dx = next.Dx < 0 ? 0 : next.Dx };
         _state = next;
         Publish(u, force);
     }
@@ -168,7 +196,7 @@ public sealed class SimulationLoop : IDisposable
     private void ClearInputs()
     {
         ManualForce = 0;
-        lock (_inputGate) { _pulsePending = false; _pulseForce = 0; _pulseUntil = 0; }
+        lock (_inputGate) { _pulsePending = false; _pulseForce = 0; _pulseUntil = 0; _cartPulsePending = false; _cartPulseForce = 0; _cartPulseUntil = 0; }
     }
     private void EnsurePaused()
     {
