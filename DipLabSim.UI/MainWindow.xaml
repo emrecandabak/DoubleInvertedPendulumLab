@@ -6,8 +6,8 @@
         xmlns:views="clr-namespace:DipLabSim.UI.Views"
         xmlns:vm="clr-namespace:DipLabSim.UI.ViewModels"
         mc:Ignorable="d"
-        Title="DipLabSim — Double Inverted Pendulum Laboratory Simulator — Open Loop"
-        Height="850" Width="1300"
+        Title="DipLabSim — Double Inverted Pendulum Laboratory Simulator"
+        Height="850" Width="1360"
         MinHeight="680" MinWidth="1050"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource BgDarkBrush}"
@@ -36,7 +36,7 @@
             <DockPanel LastChildFill="True">
 
                 <!-- Left Branding / Status Indicator -->
-                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,24,0">
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
                     <!-- Status Pulse Dot -->
                     <Ellipse Width="10" Height="10" Margin="0,0,8,0" VerticalAlignment="Center">
                         <Ellipse.Style>
@@ -58,7 +58,7 @@
                 </StackPanel>
 
                 <!-- Right Controls: Speed Selector -->
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
                     <TextBlock Text="Speed:" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12" />
                     <ComboBox ItemsSource="{Binding AvailableSpeeds}" SelectedItem="{Binding SelectedSpeed}"
                               Style="{StaticResource LabComboBox}" Width="70" VerticalAlignment="Center">
@@ -70,27 +70,34 @@
                     </ComboBox>
                 </StackPanel>
 
-                <!-- Center Section: Plant Selector, Controller Selector & Transport Buttons -->
+                <!-- Center Section: Plant Selector, Controller Selector, Solver & Transport Buttons -->
                 <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
 
                     <!-- Plant Model Selector -->
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="Plant Model:" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12" />
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                        <TextBlock Text="Plant:" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12" />
                         <ComboBox ItemsSource="{Binding AvailablePlants}" SelectedItem="{Binding CurrentPlant}"
-                                  DisplayMemberPath="Name" IsEnabled="{Binding IsPaused}" Style="{StaticResource LabComboBox}" Width="210" VerticalAlignment="Center" />
+                                  DisplayMemberPath="Name" IsEnabled="{Binding IsPaused}" Style="{StaticResource LabComboBox}" Width="185" VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- Controller Selector -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                        <TextBlock Text="Controller:" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12" />
+                        <ComboBox ItemsSource="{Binding AvailableControllers}" SelectedItem="{Binding SelectedController}"
+                                  DisplayMemberPath="Name" IsEnabled="{Binding IsPaused}" Style="{StaticResource LabComboBox}" Width="245" VerticalAlignment="Center" />
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
                         <TextBlock Text="Solver:" VerticalAlignment="Center" Margin="0,0,6,0" />
                         <ComboBox ItemsSource="{Binding AvailableSolvers}" SelectedItem="{Binding SelectedSolver}"
-                                  DisplayMemberPath="Name" IsEnabled="{Binding IsPaused}" Width="225" Style="{StaticResource LabComboBox}" />
+                                  DisplayMemberPath="Name" IsEnabled="{Binding IsPaused}" Width="190" Style="{StaticResource LabComboBox}" />
                         <TextBlock Text="dt [s]:" VerticalAlignment="Center" Margin="8,0,6,0" />
                         <ComboBox ItemsSource="{Binding AvailableSteps}" SelectedItem="{Binding SelectedStep}"
-                                  IsEnabled="{Binding IsPaused}" Width="80" Style="{StaticResource LabComboBox}" />
+                                  IsEnabled="{Binding IsPaused}" Width="75" Style="{StaticResource LabComboBox}" />
                     </StackPanel>
 
                     <!-- Simulation Transport: Play/Pause and Reset -->
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,0,0">
                         <Button Command="{Binding TogglePlayPauseCommand}" Margin="0,0,6,0" MinWidth="85">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource LabAccentButton}">
@@ -133,7 +140,7 @@
                 <TabControl Style="{StaticResource LabTabControl}" BorderThickness="0">
 
                     <!-- TAB 1: MODEL PARAMETERS -->
-                    <TabItem Header="Plant Parameters" Style="{StaticResource LabTabItem}">
+                    <TabItem Header="Plant" Style="{StaticResource LabTabItem}">
                         <DockPanel LastChildFill="True" IsEnabled="{Binding IsPaused}">
 
                             <!-- Model Info Header Banner -->
@@ -193,7 +200,75 @@
                         </DockPanel>
                     </TabItem>
 
-                    <!-- TAB 2: MANUAL STATE PREVIEW (Week 1 Interactive Test) -->
+                    <!-- TAB 2: CONTROLLER PARAMETERS -->
+                    <TabItem Header="Controller" Style="{StaticResource LabTabItem}">
+                        <DockPanel LastChildFill="True" IsEnabled="{Binding IsPaused}">
+
+                            <!-- Controller Info Header Banner -->
+                            <Border DockPanel.Dock="Top" Background="#11131E" Padding="12,10" 
+                                    BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="0,0,0,1">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="{Binding SelectedController.Name}" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" FontSize="13" />
+                                    <TextBlock Grid.Row="1" Text="{Binding SelectedController.Description}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,6" />
+                                    <Border Grid.Row="2" Background="#161928" BorderBrush="#232942" BorderThickness="1" CornerRadius="3" Padding="6,4" Margin="0,0,0,8">
+                                        <TextBlock Text="{Binding ControllerGainsSummary}" Foreground="{StaticResource AccentAmberBrush}" FontFamily="Consolas" FontSize="10.5" TextWrapping="Wrap" />
+                                    </Border>
+                                    <WrapPanel Grid.Row="3" Orientation="Horizontal">
+                                        <Button Content="⚡ Auto-Calculate for Model" Command="{Binding AutoCalculateControllerParametersCommand}" IsEnabled="{Binding HasControllerParameters}" Style="{StaticResource LabAccentButton}" Padding="8,4" FontSize="11" Margin="0,0,6,4" ToolTip="Linearize the currently configured plant model and compute optimal controller parameters" />
+                                        <Button Content="↺ Reset Defaults" Command="{Binding ResetControllerParametersToDefaultCommand}" IsEnabled="{Binding HasControllerParameters}" Style="{StaticResource LabButton}" Padding="8,4" FontSize="11" Margin="0,0,0,4" ToolTip="Restore default parameters for the reference plant model" />
+                                    </WrapPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Controller Parameter Items List (Grouped by Category) -->
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="8,4">
+                                <ItemsControl ItemsSource="{Binding ControllerParameterItemsView}">
+                                    <ItemsControl.GroupStyle>
+                                        <GroupStyle>
+                                            <GroupStyle.HeaderTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="#1C2032" Padding="8,4" Margin="0,8,0,3" CornerRadius="3" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="1">
+                                                        <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="{StaticResource AccentAmberBrush}" FontSize="11" />
+                                                    </Border>
+                                                </DataTemplate>
+                                            </GroupStyle.HeaderTemplate>
+                                        </GroupStyle>
+                                    </ItemsControl.GroupStyle>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="0,2" Padding="6,4" Background="#141724" CornerRadius="3" BorderBrush="#1F2436" BorderThickness="1">
+                                                <Grid>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding HeaderLabel}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="11" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ValueString, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource LabTextBox}" Width="75" TextAlignment="Right" Height="22" Padding="4,2" />
+
+                                                    <Slider Grid.Row="1" Grid.ColumnSpan="2" Minimum="{Binding MinValue}" Maximum="{Binding MaxValue}"
+                                                            SmallChange="{Binding Step}" LargeChange="{Binding Step}" Value="{Binding Value}"
+                                                            Margin="0,4,0,0" Style="{StaticResource LabSlider}" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </DockPanel>
+                    </TabItem>
+
+                    <!-- TAB 3: INITIAL STATE -->
                     <TabItem Header="Initial State" Style="{StaticResource LabTabItem}">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,10" IsEnabled="{Binding IsPaused}">
                             <StackPanel Orientation="Vertical">
@@ -201,8 +276,8 @@
                                 <!-- Guidance Card -->
                                 <Border Background="#11131E" Padding="10" CornerRadius="4" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="1" Margin="0,0,0,12">
                                     <StackPanel Orientation="Vertical">
-                                        <TextBlock Text="INITIAL STATE — OPEN LOOP" FontWeight="Bold" Foreground="{StaticResource AccentAmberBrush}" FontSize="11" Margin="0,0,0,4" />
-                                        <TextBlock Text="Edit while paused. Reset restores these positions and zero velocities. Perturbed preset demonstrates free fall; exact upright at rest remains an ideal equilibrium." Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" TextWrapping="Wrap" />
+                                        <TextBlock Text="INITIAL STATE CONFIGURATION" FontWeight="Bold" Foreground="{StaticResource AccentAmberBrush}" FontSize="11" Margin="0,0,0,4" />
+                                        <TextBlock Text="Edit while paused. Reset restores these positions and zero velocities. Use Upright or Perturbed presets to test LQR and Cascade PID stabilization." Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Border>
 
@@ -273,7 +348,7 @@
                     <TabItem Header="Forces" Style="{StaticResource LabTabItem}">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,10">
                             <StackPanel>
-                                <TextBlock Text="CART FORCE (OPEN LOOP)" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" />
+                                <TextBlock Text="CART DISTURBANCE / MANUAL FORCE" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" />
                                 <DockPanel Margin="0,10,0,4">
                                     <TextBlock Text="Cart force [N]:" Foreground="{StaticResource TextPrimaryBrush}" FontSize="11" FontWeight="SemiBold" DockPanel.Dock="Left" />
                                     <TextBlock Text="{Binding CartForce, StringFormat='{}{0:F1} N'}" Foreground="{StaticResource AccentCyanBrush}" FontFamily="Consolas" FontWeight="Bold" FontSize="11" DockPanel.Dock="Right" />
@@ -309,7 +384,7 @@
                                 </WrapPanel>
                                 <TextBlock Text="Cart buttons use the Cart force slider above. Link push buttons use the Link magnitude below. Pulse durations are rounded up to whole physics steps." TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,12,0,8" FontSize="11" />
                                 <TextBlock Text="{Binding DisturbanceForce, StringFormat='Applied disturbance: {0:F2} N'}" />
-                                <TextBlock Text="Controller: None / Open loop" Margin="0,12,0,0" />
+                                <TextBlock Text="{Binding SelectedController.Name, StringFormat='Controller: {0}'}" Foreground="{StaticResource AccentCyanBrush}" FontWeight="SemiBold" Margin="0,12,0,0" />
                             </StackPanel>
                         </ScrollViewer>
                     </TabItem>
@@ -339,6 +414,7 @@
                                                 ControlForceU="{Binding ControlForceU}"
                                                 DisturbanceForce="{Binding DisturbanceForce}"
                                                 DisturbanceTarget="{Binding ActiveDisturbanceTarget}"
+                                                ControllerName="{Binding SelectedController.Name}"
                                                 L1="{Binding L1}"
                                                 L2="{Binding L2}" />
                 </Border>

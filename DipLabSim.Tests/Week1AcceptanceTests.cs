@@ -111,4 +111,37 @@ public class UiAcceptanceTests
         vm.PulseCartRightCommand.Execute(null);
         Assert.Contains("Momentary cart force", vm.StatusMessage);
     });
+    [Fact]
+    public void IntegratedLqrAndCascadePidControllersAreSelectableAndConfigurable() => Sta(() =>
+    {
+        using var vm = new MainViewModel();
+        Assert.Equal(3, vm.AvailableControllers.Count);
+        Assert.Contains(vm.AvailableControllers, c => c is LqrController);
+        Assert.Contains(vm.AvailableControllers, c => c is CascadePidController);
+        Assert.Contains(vm.AvailableControllers, c => c is OpenLoopController);
+
+        Assert.IsType<LqrController>(vm.SelectedController);
+        Assert.True(vm.HasControllerParameters);
+        var qx = vm.ControllerParameterItems.First(p => p.Key == "Qx");
+        double defaultQx = qx.Value;
+        qx.Value = 25.0;
+        Assert.Equal(25.0, vm.SelectedController.GetParameter("Qx"));
+        vm.ResetControllerParametersToDefaultCommand.Execute(null);
+        Assert.Equal(defaultQx, qx.Value);
+
+        vm.SelectedController = vm.AvailableControllers.First(c => c is CascadePidController);
+        Assert.True(vm.HasControllerParameters);
+        Assert.Contains(vm.ControllerParameterItems, p => p.Key == "KpX");
+        Assert.Contains(vm.ControllerParameterItems, p => p.Key == "Kp2");
+        Assert.Contains(vm.ControllerParameterItems, p => p.Key == "Kp1");
+
+        double defaultKp1 = vm.ControllerParameterItems.First(p => p.Key == "Kp1").Value;
+        vm.CurrentPlant.SetParameter("M", 3.0);
+        vm.AutoCalculateControllerParametersCommand.Execute(null);
+        double updatedKp1 = vm.ControllerParameterItems.First(p => p.Key == "Kp1").Value;
+        Assert.NotEqual(defaultKp1, updatedKp1);
+
+        vm.SelectedController = vm.AvailableControllers.First(c => c is OpenLoopController);
+        Assert.False(vm.HasControllerParameters);
+    });
 }

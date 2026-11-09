@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Data;
@@ -16,9 +17,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private bool _synchronizing;
     private readonly DoublePendulumPlant _model1 = new NonlinearEulerLagrangePlant();
     private readonly DoublePendulumPlant _model2 = new NewtonEulerPlant();
+    private readonly LqrController _lqrController = new();
+    private readonly CascadePidController _cascadePidController = new();
+    private readonly OpenLoopController _openLoopController = new();
 
     [ObservableProperty] private DoublePendulumPlant _currentPlant;
     [ObservableProperty] private IOdeSolver _selectedSolver;
+    [ObservableProperty] private IController _selectedController;
     [ObservableProperty] private double _selectedStep = 0.001;
     [ObservableProperty] private double _selectedSpeed = 1;
     [ObservableProperty] private bool _isRunning;
@@ -41,16 +46,26 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private double _pushMagnitude = 2;
     [ObservableProperty] private double _pushDuration = 0.1;
     [ObservableProperty] private DisturbanceTarget _selectedDisturbanceTarget = DisturbanceTarget.UpperLinkTip;
-    [ObservableProperty] private string _statusMessage = "Ready — open loop";
+    [ObservableProperty] private string _statusMessage = "Ready";
 
     public ObservableCollection<DoublePendulumPlant> AvailablePlants { get; } = new();
     public ObservableCollection<IOdeSolver> AvailableSolvers { get; } = new()
         { new ForwardEulerSolver(), new HeunSolver(), new Rk4Solver(), new BackwardEulerSolver() };
+    public ObservableCollection<IController> AvailableControllers { get; } = new();
     public double[] AvailableSteps { get; } = [0.0001, 0.0005, 0.001, 0.002, 0.005, 0.01];
     public double[] AvailableSpeeds { get; } = [0.25, 0.5, 1, 2];
     public DisturbanceTarget[] DisturbanceTargets { get; } = Enum.GetValues<DisturbanceTarget>();
     public ObservableCollection<ParameterItemViewModel> ParameterItems { get; } = new();
     public ICollectionView ParameterItemsView { get; }
+    public ObservableCollection<ParameterItemViewModel> ControllerParameterItems { get; } = new();
+    public ICollectionView ControllerParameterItemsView { get; }
+    public bool HasControllerParameters => ControllerParameterItems.Count > 0;
+    public string ControllerGainsSummary => SelectedController switch
+    {
+        LqrController lqr => lqr.GainsSummary,
+        CascadePidController pid => pid.GainsSummary,
+        _ => "Open-loop mode (u = 0 N)"
+    };
     public SimulationService PreviewService => _simulation;
     public PendulumState CurrentState => _simulation.CurrentState;
     public bool IsPaused => !IsRunning;
@@ -64,15 +79,26 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         // Set backing fields before hooks; UI is the composition root.
         _currentPlant = _model1;
         _selectedSolver = AvailableSolvers[2];
-        AvailablePlants.Add(_model1); AvailablePlants.Add(_model2);
+        _selectedController = _lqrController;
+        AvailablePlants.Add(_model1);
+        AvailablePlants.Add(_model2);
+        AvailableControllers.Add(_lqrController);
+        AvailableControllers.Add(_cascadePidController);
+        AvailableControllers.Add(_openLoopController);
+
         ParameterItemsView = CollectionViewSource.GetDefaultView(ParameterItems);
         ParameterItemsView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ParameterItemViewModel.Category)));
-        _simulation = new SimulationService(_currentPlant, _selectedSolver);
+
+        ControllerParameterItemsView = CollectionViewSource.GetDefaultView(ControllerParameterItems);
+        ControllerParameterItemsView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ParameterItemViewModel.Category)));
+
+        _simulation = new SimulationService(_currentPlant, _selectedSolver, _selectedController);
         _simulation.FrameAvailable += OnFrame;
         _simulation.StateChanged += OnEngineStateChanged;
         _model1.ParametersChanged += OnPlantParametersChanged;
         _model2.ParametersChanged += OnPlantParametersChanged;
         RebuildParameterItems();
+        RebuildControllerParameterItems();
         ResetSimulation();
     }
 
@@ -92,6 +118,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     }
     partial void OnSelectedSolverChanged(IOdeSolver value) => Configure();
     partial void OnSelectedStepChanged(double value) => Configure();
+    partial void OnSelectedControllerChanged(IController value)
+    {
+        _simulation.Pause();
+        RebuildControllerParameterItems();
+        Configure();
+    }
     partial void OnSelectedSpeedChanged(double value) => _simulation.SpeedMultiplier = value;
     partial void OnCartForceChanged(double value)
     {
@@ -122,9 +154,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     private void Configure()
     {
-        _simulation.Configure(CurrentPlant, SelectedSolver, SelectedStep);
+        _simulation.Configure(CurrentPlant, SelectedSolver, SelectedController, SelectedStep);
+        foreach (var item in ControllerParameterItems) item.RefreshFromPlant();
+        OnPropertyChanged(nameof(ControllerGainsSummary));
         ManualCartForce = 0;
-        StatusMessage = $"Open loop | {CurrentPlant.Name} | {SelectedSolver.Name}";
+        StatusMessage = $"{SelectedController.Name} | {CurrentPlant.Name} | {SelectedSolver.Name}";
     }
     private void UpdateManualState()
     {
@@ -136,10 +170,42 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         ParameterItems.Clear();
         foreach (var p in CurrentPlant.GetParameterDescriptors()) ParameterItems.Add(new(CurrentPlant, p));
     }
+    private void RebuildControllerParameterItems()
+    {
+        foreach (var oldItem in ControllerParameterItems)
+            oldItem.PropertyChanged -= OnControllerParameterItemChanged;
+        ControllerParameterItems.Clear();
+        foreach (var p in SelectedController.GetParameterDescriptors())
+        {
+            var vm = new ParameterItemViewModel(SelectedController, p);
+            vm.PropertyChanged += OnControllerParameterItemChanged;
+            ControllerParameterItems.Add(vm);
+        }
+        OnPropertyChanged(nameof(HasControllerParameters));
+        OnPropertyChanged(nameof(ControllerGainsSummary));
+    }
+    private void OnControllerParameterItemChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ParameterItemViewModel.Value))
+            OnPropertyChanged(nameof(ControllerGainsSummary));
+    }
+    private Dictionary<string, double> GetCurrentPlantParametersDictionary()
+    {
+        var descriptors = CurrentPlant.GetParameterDescriptors();
+        var dict = new Dictionary<string, double>(descriptors.Count, StringComparer.Ordinal);
+        foreach (var d in descriptors) dict[d.Key] = CurrentPlant.GetParameter(d.Key);
+        return dict;
+    }
     private void OnPlantParametersChanged()
     {
         foreach (var item in ParameterItems) item.RefreshFromPlant();
         OnPropertyChanged(nameof(L1)); OnPropertyChanged(nameof(L2));
+        if (!IsRunning)
+        {
+            SelectedController.Initialize(GetCurrentPlantParametersDictionary());
+            foreach (var item in ControllerParameterItems) item.RefreshFromPlant();
+            OnPropertyChanged(nameof(ControllerGainsSummary));
+        }
     }
     private void OnFrame(SimulationFrame frame)
     {
@@ -153,7 +219,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private void OnEngineStateChanged()
     {
         IsRunning = _simulation.IsRunning;
-        StatusMessage = _simulation.Fault ?? (IsRunning ? "Running — open-loop physics" : "Paused — edit initial state, model or solver");
+        StatusMessage = _simulation.Fault ?? (IsRunning ? $"Running — {SelectedController.Name}" : "Paused — edit initial state, model, controller or solver");
     }
     [RelayCommand] private void TogglePlayPause()
     {
@@ -209,12 +275,38 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         CurrentPlant.ResetToDefaults();
         Configure();
     }
+    [RelayCommand] private void AutoCalculateControllerParameters()
+    {
+        if (IsRunning) return;
+        var dict = GetCurrentPlantParametersDictionary();
+        if (SelectedController is LqrController lqr)
+            lqr.AutoCalculateOptimalParameters(dict);
+        else if (SelectedController is CascadePidController pid)
+            pid.AutoCalculateOptimalParameters(dict);
+        foreach (var item in ControllerParameterItems) item.RefreshFromPlant();
+        OnPropertyChanged(nameof(ControllerGainsSummary));
+        StatusMessage = $"Auto-calculated optimal {SelectedController.Name} parameters for current plant model";
+    }
+    [RelayCommand] private void ResetControllerParametersToDefault()
+    {
+        if (IsRunning) return;
+        if (SelectedController is LqrController lqr) lqr.ResetParametersToDefaults();
+        else if (SelectedController is CascadePidController pid) pid.ResetParametersToDefaults();
+        foreach (var item in ControllerParameterItems) item.RefreshFromPlant();
+        OnPropertyChanged(nameof(ControllerGainsSummary));
+        Configure();
+    }
     public void Dispose()
     {
+        foreach (var oldItem in ControllerParameterItems)
+            oldItem.PropertyChanged -= OnControllerParameterItemChanged;
         _model1.ParametersChanged -= OnPlantParametersChanged;
         _model2.ParametersChanged -= OnPlantParametersChanged;
         _simulation.FrameAvailable -= OnFrame;
         _simulation.StateChanged -= OnEngineStateChanged;
         _simulation.Dispose();
+        _lqrController.Dispose();
+        _cascadePidController.Dispose();
+        _openLoopController.Dispose();
     }
 }

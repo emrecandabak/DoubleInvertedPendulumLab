@@ -25,13 +25,23 @@ public sealed class SimulationLoop : IDisposable
     private double _cartPulseForce, _cartPulseUntil;
     private IPlant _plant;
     private IOdeSolver _solver;
+    private IController? _controller;
     private PendulumState _state;
+    private PendulumState _reference = PendulumState.Zero;
     private double _dt = 0.001;
     private string? _fault;
     private bool _disposed;
 
-    public SimulationLoop(IPlant plant, IOdeSolver solver) { _plant = plant; _solver = solver; }
+    public SimulationLoop(IPlant plant, IOdeSolver solver, IController? controller = null)
+    {
+        _plant = plant;
+        _solver = solver;
+        _controller = controller;
+        InitializeController();
+    }
+
     public ChannelReader<SimulationFrame> Frames => _frames.Reader;
+    public IController? Controller => _controller;
     public bool IsRunning => _running;
     public PendulumState PausedState { get { EnsurePaused(); return _state; } }
     public string? Fault => Volatile.Read(ref _fault);
@@ -55,14 +65,35 @@ public sealed class SimulationLoop : IDisposable
         }
     }
 
-    public void Configure(IPlant plant, IOdeSolver solver, double dt)
+    public void Configure(IPlant plant, IOdeSolver solver, double dt) =>
+        Configure(plant, solver, _controller, dt);
+
+    public void Configure(IPlant plant, IOdeSolver solver, IController? controller, double dt)
     {
         EnsurePaused();
         if (!double.IsFinite(dt) || dt < 0.0001 || dt > 0.01) throw new ArgumentOutOfRangeException(nameof(dt));
-        _plant = plant; _solver = solver; _dt = dt;
+        _plant = plant;
+        _solver = solver;
+        _controller = controller;
+        _dt = dt;
+        InitializeController();
         ClearInputs();
         Volatile.Write(ref _fault, null);
         Publish(0, 0);
+    }
+
+    private void InitializeController()
+    {
+        if (_controller is null) return;
+        var descriptors = _plant.GetParameterDescriptors();
+        var dict = new Dictionary<string, double>(descriptors.Count, StringComparer.Ordinal);
+        for (int i = 0; i < descriptors.Count; i++)
+        {
+            string key = descriptors[i].Key;
+            dict[key] = _plant.GetParameter(key);
+        }
+        _controller.Initialize(dict);
+        _controller.Reset();
     }
 
     // A finite rectangular force pulse (N, seconds), not an instantaneous angle edit.
@@ -98,6 +129,7 @@ public sealed class SimulationLoop : IDisposable
         EnsurePaused();
         if (!IsFinite(state)) throw new ArgumentOutOfRangeException(nameof(state));
         _state = state with { X = Math.Clamp(state.X, -CartBoundary, CartBoundary) };
+        _controller?.Reset();
         ClearInputs();
         Volatile.Write(ref _fault, null);
         Publish(0, 0);
@@ -177,7 +209,8 @@ public sealed class SimulationLoop : IDisposable
         double force = _state.Time < _pulseUntil - _dt * 1e-6 ? _pulseForce : 0;
         if (_plant is ITargetedDisturbancePlant targeted) targeted.DisturbanceTarget = _pulseTarget;
         double cartPulse = _state.Time < _cartPulseUntil - _dt * 1e-6 ? _cartPulseForce : 0;
-        double u = ManualForce + cartPulse;
+        double controllerForce = _controller?.ComputeControlInput(in _state, in _reference, _dt) ?? 0;
+        double u = Math.Clamp(controllerForce + ManualForce + cartPulse, -100, 100);
         var next = _solver.Step(_plant, _state, u, force, _dt);
         if (!IsFinite(next) || Math.Abs(next.X) > 100 || Math.Abs(next.Dx) > 1000
             || Math.Abs(next.DTheta1) > 10000 || Math.Abs(next.DTheta2) > 10000)
@@ -191,7 +224,7 @@ public sealed class SimulationLoop : IDisposable
     }
 
     private void Publish(double u, double disturbance) => _frames.Writer.TryWrite(
-        new SimulationFrame(_state, PendulumState.Zero, u, disturbance) { DisturbanceTarget = _pulseTarget });
+        new SimulationFrame(_state, _reference, u, disturbance) { DisturbanceTarget = _pulseTarget });
 
     private void ClearInputs()
     {

@@ -47,6 +47,13 @@ public partial class PendulumCanvasControl : UserControl
             typeof(PendulumCanvasControl),
             new FrameworkPropertyMetadata(0.28, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    public static readonly DependencyProperty ControllerNameProperty =
+        DependencyProperty.Register(
+            nameof(ControllerName),
+            typeof(string),
+            typeof(PendulumCanvasControl),
+            new FrameworkPropertyMetadata("LQR (Linear Quadratic Regulator)", FrameworkPropertyMetadataOptions.AffectsRender));
+
     public PendulumState State
     {
         get => (PendulumState)GetValue(StateProperty);
@@ -69,6 +76,12 @@ public partial class PendulumCanvasControl : UserControl
     {
         get => (double)GetValue(L2Property);
         set => SetValue(L2Property, value);
+    }
+
+    public string ControllerName
+    {
+        get => (string)GetValue(ControllerNameProperty);
+        set => SetValue(ControllerNameProperty, value);
     }
 
     // --- Cached Paint & Font Resources (Zero-Heap Allocation in Rendering Loop) ---
@@ -391,7 +404,8 @@ public partial class PendulumCanvasControl : UserControl
         canvas.DrawRoundRect(hudRect, 8f, 8f, _hudBorderPaint);
 
         // Title
-        canvas.DrawText("OPEN-LOOP PHYSICS", hudX + 14f, hudY + 22f, _fontHudBold, _hudAccentPaint);
+        string hudTitle = string.IsNullOrWhiteSpace(ControllerName) ? "DIPC TELEMETRY" : ControllerName;
+        canvas.DrawText(hudTitle, hudX + 14f, hudY + 22f, _fontHudBold, _hudAccentPaint);
         canvas.DrawLine(hudX + 14f, hudY + 28f, hudX + hudW - 14f, hudY + 28f, _hudBorderPaint);
 
         float rowY = hudY + 46f;

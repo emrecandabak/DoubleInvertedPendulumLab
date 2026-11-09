@@ -13,20 +13,24 @@ public sealed class SimulationService : IDisposable
     public event Action<SimulationFrame>? FrameAvailable;
     public event Action? StateChanged;
     public PendulumState CurrentState { get; private set; }
+    public IController? Controller => _engine.Controller;
     public bool IsRunning => _engine.IsRunning;
     public string? Fault => _engine.Fault;
     public double SpeedMultiplier { get => _engine.SpeedMultiplier; set => _engine.SpeedMultiplier = value; }
     public double ManualForce { get => _engine.ManualForce; set => _engine.ManualForce = value; }
 
-    public SimulationService(IPlant plant, IOdeSolver solver)
+    public SimulationService(IPlant plant, IOdeSolver solver, IController? controller = null)
     {
-        _engine = new SimulationLoop(plant, solver);
+        _engine = new SimulationLoop(plant, solver, controller);
         CompositionTarget.Rendering += OnRendering;
     }
-    public void Configure(IPlant plant, IOdeSolver solver, double step)
+    public void Configure(IPlant plant, IOdeSolver solver, double step) =>
+        Configure(plant, solver, _engine.Controller, step);
+
+    public void Configure(IPlant plant, IOdeSolver solver, IController? controller, double step)
     {
         Pause();
-        _engine.Configure(plant, solver, step);
+        _engine.Configure(plant, solver, controller, step);
         Drain();
     }
     public void Start() { _engine.Start(); Notify(); }
