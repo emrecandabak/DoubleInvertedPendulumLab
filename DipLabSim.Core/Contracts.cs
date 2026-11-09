@@ -84,4 +84,7 @@ public readonly record struct SimulationFrame(
     PendulumState State,
     PendulumState Reference,
     double ControlForceU,
-    double DisturbanceForce);
+    double DisturbanceForce)
+{
+    public DisturbanceTarget DisturbanceTarget { get; init; }
+}

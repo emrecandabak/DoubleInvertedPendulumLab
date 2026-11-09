@@ -13,6 +13,9 @@ public partial class TelemetryScopeControl : UserControl
     private DataLogger? _loggerTheta1;
     private DataLogger? _loggerTheta2;
     private DataLogger? _loggerControl;
+    private DataLogger? _loggerDisturbance;
+    private double _lastSampleTime = -1;
+    private int _sampleCount;
 
     private readonly ScottPlot.Color _bgDark = ScottPlot.Color.FromHex("#12131C");
     private readonly ScottPlot.Color _dataBgDark = ScottPlot.Color.FromHex("#0E0F17");
@@ -59,13 +62,17 @@ public partial class TelemetryScopeControl : UserControl
         AnglesPlot.Plot.Axes.SetLimitsY(-Math.PI, Math.PI);
 
         // 3. Control Force Plot: u(t)
-        ConfigurePlotBase(ControlPlot.Plot, "CONTROL FORCE: u(t) [N]");
+        ConfigurePlotBase(ControlPlot.Plot, "CART INPUT / LINK DISTURBANCE [N]");
         _loggerControl = ControlPlot.Plot.Add.DataLogger();
         _loggerControl.Color = _magentaColor;
         _loggerControl.LineWidth = 2f;
         _loggerControl.LegendText = "Control u";
         _loggerControl.ViewSlide(10.0);
         ControlPlot.Plot.Axes.SetLimitsY(-30.0, 30.0);
+        _loggerDisturbance = ControlPlot.Plot.Add.DataLogger();
+        _loggerDisturbance.Color = _amberColor;
+        _loggerDisturbance.LegendText = "Link disturbance";
+        _loggerDisturbance.ViewSlide(10.0);
 
         // Refresh initially
         CartPlot.Refresh();
@@ -95,10 +102,19 @@ public partial class TelemetryScopeControl : UserControl
     public void AddFrame(in SimulationFrame frame)
     {
         double t = frame.State.Time;
+        // DataLogger requires monotone X. Reset/configuration/manual edits may repeat t.
+        if (t < _lastSampleTime || _sampleCount >= 36000) ClearData();
+        if (t <= _lastSampleTime) return;
+        _lastSampleTime = t;
+        _sampleCount++;
         _loggerCart?.Add(t, frame.State.X);
         _loggerTheta1?.Add(t, frame.State.Theta1);
         _loggerTheta2?.Add(t, frame.State.Theta2);
         _loggerControl?.Add(t, frame.ControlForceU);
+        _loggerDisturbance?.Add(t, frame.DisturbanceForce);
+        // Angles remain unwrapped in the physical state; auto-scale to see full rotations.
+        AnglesPlot.Plot.Axes.AutoScaleY();
+        CartPlot.Plot.Axes.AutoScaleY();
 
         // Throttle UI refreshes to ~30-60 Hz max
         if (t - _lastRenderTime >= 0.025 || t < _lastRenderTime)
@@ -117,6 +133,9 @@ public partial class TelemetryScopeControl : UserControl
         _loggerTheta2?.Clear();
         _loggerControl?.Clear();
         _lastRenderTime = 0;
+        _lastSampleTime = -1;
+        _sampleCount = 0;
+        _loggerDisturbance?.Clear();
 
         CartPlot.Refresh();
         AnglesPlot.Refresh();

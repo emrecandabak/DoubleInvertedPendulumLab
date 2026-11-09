@@ -1,1 +1,4 @@
-<Solution><Folder Name="/Solution Items/"><File Path="AGENTS.md" /></Folder><Project Path="DipLabSim.Core\DipLabSim.Core.csproj" /><Project Path="DipLabSim.UI\DipLabSim.UI.csproj" /><Project Path="DipLabSim.Tests\DipLabSim.Tests.csproj" /></Solution>
+<Solution><Folder Name="/Solution Items/"><File Path="AGENTS.md" /></Folder><Project Path="DipLabSim.Core\DipLabSim.Core.csproj" /><Project Path="DipLabSim.UI\DipLabSim.UI.csproj" /><Project Path="DipLabSim.Tests\DipLabSim.Tests.csproj" />  <Project Path="DipLabSim.Physics/DipLabSim.Physics.csproj" />
+  <Project Path="DipLabSim.Engine/DipLabSim.Engine.csproj" />
+  <Project Path="DipLabSim.Numerics.Tests/DipLabSim.Numerics.Tests.csproj" />
+</Solution>

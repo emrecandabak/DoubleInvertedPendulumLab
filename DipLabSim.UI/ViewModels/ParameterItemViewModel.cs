@@ -9,7 +9,7 @@ namespace DipLabSim.UI.ViewModels;
 
 public sealed partial class ParameterItemViewModel : ObservableObject
 {
-    private readonly MockPlantModel _plant;
+    private readonly IConfigurableComponent _plant;
     private readonly ParameterDescriptor _descriptor;
     private double _currentValue;
 
@@ -19,7 +19,12 @@ public sealed partial class ParameterItemViewModel : ObservableObject
     public string Unit => _descriptor.Unit;
     public string Category => _descriptor.Category;
     public double MinValue => _descriptor.MinValue;
-    public double MaxValue => _descriptor.MaxValue;
+    public double MaxValue => Key switch
+    {
+        "l1" => Math.Min(_descriptor.MaxValue, _plant.GetParameter("L1")),
+        "l2" => Math.Min(_descriptor.MaxValue, _plant.GetParameter("L2")),
+        _ => _descriptor.MaxValue
+    };
     public double Step => _descriptor.Step;
     public double DefaultValue => _descriptor.DefaultValue;
 
@@ -32,6 +37,7 @@ public sealed partial class ParameterItemViewModel : ObservableObject
         get => _currentValue;
         set
         {
+            if (!double.IsFinite(value)) return;
             var clamped = Math.Clamp(value, MinValue, MaxValue);
             if (Math.Abs(_currentValue - clamped) > 1e-9)
             {
@@ -59,7 +65,7 @@ public sealed partial class ParameterItemViewModel : ObservableObject
         }
     }
 
-    public ParameterItemViewModel(MockPlantModel plant, ParameterDescriptor descriptor)
+    public ParameterItemViewModel(IConfigurableComponent plant, ParameterDescriptor descriptor)
     {
         _plant = plant;
         _descriptor = descriptor;
@@ -68,6 +74,7 @@ public sealed partial class ParameterItemViewModel : ObservableObject
 
     public void RefreshFromPlant()
     {
+        OnPropertyChanged(nameof(MaxValue));
         var plantVal = _plant.GetParameter(Key);
         if (Math.Abs(_currentValue - plantVal) > 1e-9)
         {
