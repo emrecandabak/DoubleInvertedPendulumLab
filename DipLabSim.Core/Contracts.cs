@@ -42,7 +42,12 @@ public sealed record ParameterDescriptor(
     double DefaultValue,
     double MinValue,
     double MaxValue,
-    double Step = 0.01);
+    double Step = 0.01)
+{
+    /// <summary>Optional plain-language explanation shown next to the input: what the parameter
+    /// is and what changing it does. Init-only so existing positional construction is unchanged.</summary>
+    public string? Help { get; init; }
+}
 
 public interface IConfigurableComponent
 {

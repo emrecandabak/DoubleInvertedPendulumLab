@@ -93,6 +93,23 @@ public class ControllerTests
     }
 
     [Fact]
+    public void EveryBuiltInParameterAndControllerIsExplained()
+    {
+        IConfigurableComponent[] components =
+        [
+            new NonlinearEulerLagrangePlant(), new NewtonEulerPlant(),
+            new OpenLoopController(), new LqrController(), new CascadePidController(),
+            new SwingUpSupervisorController(), new EnergyShapingSwingUpController()
+        ];
+        foreach (var component in components)
+        {
+            Assert.False(string.IsNullOrWhiteSpace(component.Description), component.Name);
+            foreach (var descriptor in component.GetParameterDescriptors())
+                Assert.False(string.IsNullOrWhiteSpace(descriptor.Help), $"{component.Name}: {descriptor.Key} has no help text");
+        }
+    }
+
+    [Fact]
     public void ControllersDoNotAllocateInHotLoop()
     {
         IController[] controllers = [new OpenLoopController(), new LqrController(), new CascadePidController()];

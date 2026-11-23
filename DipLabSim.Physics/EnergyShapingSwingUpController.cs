@@ -14,11 +14,27 @@ public sealed class EnergyShapingSwingUpController : IController
 {
     private static readonly ParameterDescriptor[] Descriptors =
     [
-        new("KEnergy", "Energy Pumping Gain", "k_E", "1/(J·s)", "Swing-Up Law", 0.3, 0.0, 5.0, 0.01),
-        new("KCartX", "Cart Centring Stiffness", "k_x", "1/s²", "Swing-Up Law", 2.0, 0.0, 50.0, 0.1),
-        new("KCartV", "Cart Centring Damping", "k_v", "1/s", "Swing-Up Law", 3.0, 0.0, 50.0, 0.1),
-        new("MaxAccel", "Cart Acceleration Limit", "a_max", "m/s²", "Swing-Up Law", 15.0, 0.5, 50.0, 0.5),
+        new("KEnergy", "Energy Pumping Gain", "k_E", "1/(J·s)", "Swing-Up Law", 0.3, 0.0, 5.0, 0.01)
+        {
+            Help = "How hard the cart is moved to add (or remove) pendulum energy. Larger: the energy reaches the "
+                + "upright level sooner, with larger cart motions."
+        },
+        new("KCartX", "Cart Centring Stiffness", "k_x", "1/s²", "Swing-Up Law", 2.0, 0.0, 50.0, 0.1)
+        {
+            Help = "Pulls the cart back toward x = 0 during swing-up, to keep it away from the rail ends."
+        },
+        new("KCartV", "Cart Centring Damping", "k_v", "1/s", "Swing-Up Law", 3.0, 0.0, 50.0, 0.1)
+        {
+            Help = "Damps the cart velocity during swing-up."
+        },
+        new("MaxAccel", "Cart Acceleration Limit", "a_max", "m/s²", "Swing-Up Law", 15.0, 0.5, 50.0, 0.5)
+        {
+            Help = "Upper limit on the cart acceleration the swing-up law asks for."
+        },
         new("MaxForce", "Saturation Limit", "u_max", "N", "Swing-Up Law", 80.0, 5.0, 100.0, 1.0)
+        {
+            Help = "Actuator limit: the swing-up force is clipped to ±u_max."
+        }
     ];
 
     private static readonly IReadOnlyList<ParameterDescriptor> ReadOnlyDescriptors = Array.AsReadOnly(Descriptors);

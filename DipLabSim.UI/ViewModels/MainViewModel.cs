@@ -68,6 +68,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         SwingUpSupervisorController supervisor => supervisor.GainsSummary,
         _ => "Open-loop mode (u = 0 N)"
     };
+    /// <summary>"?" text for the controller selector: what each available controller does.</summary>
+    public string ControllerOverview => BuildOverview(Help.HelpTexts.ControllerIntro, AvailableControllers);
+    /// <summary>"?" text for the plant selector: what each available model is.</summary>
+    public string PlantOverview => BuildOverview(Help.HelpTexts.Plant, AvailablePlants);
     public SimulationService PreviewService => _simulation;
     public PendulumState CurrentState => _simulation.CurrentState;
     public bool IsPaused => !IsRunning;
@@ -191,6 +195,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         if (e.PropertyName == nameof(ParameterItemViewModel.Value))
             OnPropertyChanged(nameof(ControllerGainsSummary));
+    }
+    private static string BuildOverview(string intro, IEnumerable<IConfigurableComponent> components)
+    {
+        var text = new System.Text.StringBuilder(intro);
+        foreach (var c in components)
+            text.Append("\n\n• ").Append(c.Name).Append(": ").Append(c.Description);
+        return text.ToString();
     }
     private Dictionary<string, double> GetCurrentPlantParametersDictionary()
     {

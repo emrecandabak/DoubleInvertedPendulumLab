@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:views="clr-namespace:DipLabSim.UI.Views"
         xmlns:vm="clr-namespace:DipLabSim.UI.ViewModels"
+        xmlns:help="clr-namespace:DipLabSim.UI.Help"
         mc:Ignorable="d"
         Title="DipLabSim — Double Inverted Pendulum Laboratory Simulator"
         Height="850" Width="1360"
@@ -68,6 +69,7 @@
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
+                    <Label Style="{StaticResource HelpBadge}" ToolTip="{x:Static help:HelpTexts.Speed}" />
                 </StackPanel>
 
                 <!-- Center Section: Plant Selector, Controller Selector, Solver & Transport Buttons -->
@@ -78,6 +80,7 @@
                         <TextBlock Text="Plant:" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12" />
                         <ComboBox ItemsSource="{Binding AvailablePlants}" SelectedItem="{Binding CurrentPlant}"
                                   DisplayMemberPath="Name" IsEnabled="{Binding IsPaused}" Style="{StaticResource LabComboBox}" Width="185" VerticalAlignment="Center" />
+                        <Label Style="{StaticResource HelpBadge}" ToolTip="{Binding PlantOverview}" />
                     </StackPanel>
 
                     <!-- Controller Selector -->
@@ -85,15 +88,18 @@
                         <TextBlock Text="Controller:" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12" />
                         <ComboBox ItemsSource="{Binding AvailableControllers}" SelectedItem="{Binding SelectedController}"
                                   DisplayMemberPath="Name" IsEnabled="{Binding IsPaused}" Style="{StaticResource LabComboBox}" Width="245" VerticalAlignment="Center" />
+                        <Label Style="{StaticResource HelpBadge}" ToolTip="{Binding ControllerOverview}" />
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
                         <TextBlock Text="Solver:" VerticalAlignment="Center" Margin="0,0,6,0" />
                         <ComboBox ItemsSource="{Binding AvailableSolvers}" SelectedItem="{Binding SelectedSolver}"
                                   DisplayMemberPath="Name" IsEnabled="{Binding IsPaused}" Width="190" Style="{StaticResource LabComboBox}" />
-                        <TextBlock Text="dt [s]:" VerticalAlignment="Center" Margin="8,0,6,0" />
+                        <Label Style="{StaticResource HelpBadge}" ToolTip="{x:Static help:HelpTexts.Solver}" />
+                        <TextBlock Text="dt [s]:" VerticalAlignment="Center" Margin="10,0,6,0" />
                         <ComboBox ItemsSource="{Binding AvailableSteps}" SelectedItem="{Binding SelectedStep}"
                                   IsEnabled="{Binding IsPaused}" Width="75" Style="{StaticResource LabComboBox}" />
+                        <Label Style="{StaticResource HelpBadge}" ToolTip="{x:Static help:HelpTexts.TimeStep}" />
                     </StackPanel>
 
                     <!-- Simulation Transport: Play/Pause and Reset -->
@@ -114,6 +120,7 @@
                             </Button.Style>
                         </Button>
                         <Button Content="⏮ Reset" Command="{Binding ResetSimulationCommand}" Style="{StaticResource LabButton}" MinWidth="75" ToolTip="Reset to the initial state with zero velocities" />
+                        <Label Style="{StaticResource HelpBadge}" ToolTip="{x:Static help:HelpTexts.PlayReset}" />
                     </StackPanel>
 
                 </WrapPanel>
@@ -152,9 +159,15 @@
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
-                                    <TextBlock Grid.Row="0" Text="{Binding CurrentPlant.Name}" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" FontSize="13" />
+                                    <StackPanel Grid.Row="0" Orientation="Horizontal">
+                                        <TextBlock Text="{Binding CurrentPlant.Name}" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" FontSize="13" VerticalAlignment="Center" />
+                                        <Label Style="{StaticResource HelpBadge}" ToolTip="{x:Static help:HelpTexts.PlantParameters}" />
+                                    </StackPanel>
                                     <TextBlock Grid.Row="1" Text="{Binding CurrentPlant.Description}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,8" />
-                                    <Button Grid.Row="2" Content="↺ Reset Parameters to Default" Command="{Binding ResetParametersToDefaultCommand}" Style="{StaticResource LabButton}" HorizontalAlignment="Left" Padding="8,4" FontSize="11" />
+                                    <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                        <Button Content="↺ Reset Parameters to Default" Command="{Binding ResetParametersToDefaultCommand}" Style="{StaticResource LabButton}" Padding="8,4" FontSize="11" />
+                                        <Label Style="{StaticResource HelpBadge}" ToolTip="{x:Static help:HelpTexts.ResetPlantParameters}" />
+                                    </StackPanel>
                                 </Grid>
                             </Border>
 
@@ -183,12 +196,15 @@
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
 
-                                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding HeaderLabel}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="11" VerticalAlignment="Center" FontWeight="SemiBold" />
-                                                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ValueString, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource LabTextBox}" Width="75" TextAlignment="Right" Height="22" Padding="4,2" />
+                                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding HeaderLabel}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="11" VerticalAlignment="Center" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                    <Label Grid.Row="0" Grid.Column="1" Style="{StaticResource HelpBadge}" Margin="6,0,8,0"
+                                                           ToolTip="{Binding HelpToolTip}" Visibility="{Binding HasHelp, Converter={StaticResource BoolToVisibility}}" />
+                                                    <TextBox Grid.Row="0" Grid.Column="2" Text="{Binding ValueString, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource LabTextBox}" Width="75" TextAlignment="Right" Height="22" Padding="4,2" />
 
-                                                    <Slider Grid.Row="1" Grid.ColumnSpan="2" Minimum="{Binding MinValue}" Maximum="{Binding MaxValue}"
+                                                    <Slider Grid.Row="1" Grid.ColumnSpan="3" Minimum="{Binding MinValue}" Maximum="{Binding MaxValue}"
                                                             SmallChange="{Binding Step}" LargeChange="{Binding Step}" Value="{Binding Value}"
                                                             Margin="0,4,0,0" Style="{StaticResource LabSlider}" />
                                                 </Grid>
@@ -214,14 +230,26 @@
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
-                                    <TextBlock Grid.Row="0" Text="{Binding SelectedController.Name}" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" FontSize="13" />
+                                    <StackPanel Grid.Row="0" Orientation="Horizontal">
+                                        <TextBlock Text="{Binding SelectedController.Name}" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" FontSize="13" VerticalAlignment="Center" />
+                                        <Label Style="{StaticResource HelpBadge}" ToolTip="{Binding ControllerOverview}" />
+                                    </StackPanel>
                                     <TextBlock Grid.Row="1" Text="{Binding SelectedController.Description}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,6" />
-                                    <Border Grid.Row="2" Background="#161928" BorderBrush="#232942" BorderThickness="1" CornerRadius="3" Padding="6,4" Margin="0,0,0,8">
-                                        <TextBlock Text="{Binding ControllerGainsSummary}" Foreground="{StaticResource AccentAmberBrush}" FontFamily="Consolas" FontSize="10.5" TextWrapping="Wrap" />
-                                    </Border>
+                                    <Grid Grid.Row="2" Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Background="#161928" BorderBrush="#232942" BorderThickness="1" CornerRadius="3" Padding="6,4">
+                                            <TextBlock Text="{Binding ControllerGainsSummary}" Foreground="{StaticResource AccentAmberBrush}" FontFamily="Consolas" FontSize="10.5" TextWrapping="Wrap" />
+                                        </Border>
+                                        <Label Grid.Column="1" Style="{StaticResource HelpBadge}" VerticalAlignment="Top" Margin="6,4,0,0" ToolTip="{x:Static help:HelpTexts.GainsSummary}" />
+                                    </Grid>
                                     <WrapPanel Grid.Row="3" Orientation="Horizontal">
-                                        <Button Content="⚡ Auto-Calculate for Model" Command="{Binding AutoCalculateControllerParametersCommand}" IsEnabled="{Binding HasControllerParameters}" Style="{StaticResource LabAccentButton}" Padding="8,4" FontSize="11" Margin="0,0,6,4" ToolTip="Linearize the currently configured plant model and compute optimal controller parameters" />
-                                        <Button Content="↺ Reset Defaults" Command="{Binding ResetControllerParametersToDefaultCommand}" IsEnabled="{Binding HasControllerParameters}" Style="{StaticResource LabButton}" Padding="8,4" FontSize="11" Margin="0,0,0,4" ToolTip="Restore default parameters for the reference plant model" />
+                                        <Button Content="⚡ Auto-Calculate for Model" Command="{Binding AutoCalculateControllerParametersCommand}" IsEnabled="{Binding HasControllerParameters}" Style="{StaticResource LabAccentButton}" Padding="8,4" FontSize="11" Margin="0,0,0,4" />
+                                        <Label Style="{StaticResource HelpBadge}" Margin="6,0,12,4" ToolTip="{x:Static help:HelpTexts.AutoCalculate}" />
+                                        <Button Content="↺ Reset Defaults" Command="{Binding ResetControllerParametersToDefaultCommand}" IsEnabled="{Binding HasControllerParameters}" Style="{StaticResource LabButton}" Padding="8,4" FontSize="11" Margin="0,0,0,4" />
+                                        <Label Style="{StaticResource HelpBadge}" Margin="6,0,0,4" ToolTip="{x:Static help:HelpTexts.ResetControllerDefaults}" />
                                     </WrapPanel>
                                 </Grid>
                             </Border>
@@ -251,12 +279,15 @@
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
 
-                                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding HeaderLabel}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="11" VerticalAlignment="Center" FontWeight="SemiBold" />
-                                                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ValueString, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource LabTextBox}" Width="75" TextAlignment="Right" Height="22" Padding="4,2" />
+                                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding HeaderLabel}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="11" VerticalAlignment="Center" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                    <Label Grid.Row="0" Grid.Column="1" Style="{StaticResource HelpBadge}" Margin="6,0,8,0"
+                                                           ToolTip="{Binding HelpToolTip}" Visibility="{Binding HasHelp, Converter={StaticResource BoolToVisibility}}" />
+                                                    <TextBox Grid.Row="0" Grid.Column="2" Text="{Binding ValueString, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource LabTextBox}" Width="75" TextAlignment="Right" Height="22" Padding="4,2" />
 
-                                                    <Slider Grid.Row="1" Grid.ColumnSpan="2" Minimum="{Binding MinValue}" Maximum="{Binding MaxValue}"
+                                                    <Slider Grid.Row="1" Grid.ColumnSpan="3" Minimum="{Binding MinValue}" Maximum="{Binding MaxValue}"
                                                             SmallChange="{Binding Step}" LargeChange="{Binding Step}" Value="{Binding Value}"
                                                             Margin="0,4,0,0" Style="{StaticResource LabSlider}" />
                                                 </Grid>
@@ -276,13 +307,19 @@
                                 <!-- Guidance Card -->
                                 <Border Background="#11131E" Padding="10" CornerRadius="4" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="1" Margin="0,0,0,12">
                                     <StackPanel Orientation="Vertical">
-                                        <TextBlock Text="INITIAL STATE CONFIGURATION" FontWeight="Bold" Foreground="{StaticResource AccentAmberBrush}" FontSize="11" Margin="0,0,0,4" />
-                                        <TextBlock Text="Edit while paused. Reset restores these positions and zero velocities. Use Upright or Perturbed presets to test LQR and Cascade PID stabilization." Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" TextWrapping="Wrap" />
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                            <TextBlock Text="INITIAL STATE CONFIGURATION" FontWeight="Bold" Foreground="{StaticResource AccentAmberBrush}" FontSize="11" VerticalAlignment="Center" />
+                                            <Label Style="{StaticResource HelpBadge}" ToolTip="{x:Static help:HelpTexts.InitialState}" />
+                                        </StackPanel>
+                                        <TextBlock Text="Edit while paused. Reset restores these positions and zero velocities. Use Upright or Perturbed presets to test LQR and Cascade PID stabilization, and Hanging with the Swing-Up Supervisor." Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Border>
 
                                 <!-- Angle Preset Buttons -->
-                                <TextBlock Text="Quick Angle Presets:" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <TextBlock Text="Quick Angle Presets:" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <Label Style="{StaticResource HelpBadge}" ToolTip="{x:Static help:HelpTexts.Presets}" />
+                                </StackPanel>
                                 <WrapPanel Orientation="Horizontal" Margin="0,0,0,16">
                                     <Button Content="Upright (0, 0)" Command="{Binding SetUprightPresetCommand}" Style="{StaticResource LabButton}" Margin="0,0,6,6" FontSize="11" Padding="8,4" />
                                     <Button Content="Hanging (π, π)" Command="{Binding SetHangingPresetCommand}" Style="{StaticResource LabButton}" Margin="0,0,6,6" FontSize="11" Padding="8,4" />
@@ -294,7 +331,10 @@
                                 <Border Background="#141724" Padding="10" CornerRadius="4" BorderBrush="#1F2436" BorderThickness="1" Margin="0,0,0,10">
                                     <StackPanel Orientation="Vertical">
                                         <DockPanel LastChildFill="False">
-                                            <TextBlock Text="Cart Position (x):" Foreground="{StaticResource TextPrimaryBrush}" FontWeight="SemiBold" FontSize="11" DockPanel.Dock="Left" />
+                                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                                                <TextBlock Text="Cart Position (x):" Foreground="{StaticResource TextPrimaryBrush}" FontWeight="SemiBold" FontSize="11" VerticalAlignment="Center" />
+                                                <Label Style="{StaticResource HelpBadge}" ToolTip="{x:Static help:HelpTexts.CartPosition}" />
+                                            </StackPanel>
                                             <TextBlock Text="{Binding ManualX, StringFormat='{}{0:+0.000;-0.000;0.000} m'}" Foreground="{StaticResource AccentCyanBrush}" FontFamily="Consolas" FontWeight="Bold" FontSize="12" DockPanel.Dock="Right" />
                                         </DockPanel>
                                         <Slider Minimum="-1.8" Maximum="1.8" SmallChange="0.01" LargeChange="0.1" Value="{Binding ManualX}" Style="{StaticResource LabSlider}" Margin="0,6,0,0" />
@@ -309,7 +349,10 @@
                                 <Border Background="#141724" Padding="10" CornerRadius="4" BorderBrush="#1F2436" BorderThickness="1" Margin="0,0,0,10">
                                     <StackPanel Orientation="Vertical">
                                         <DockPanel LastChildFill="False">
-                                            <TextBlock Text="Link 1 Angle (θ₁):" Foreground="{StaticResource TextPrimaryBrush}" FontWeight="SemiBold" FontSize="11" DockPanel.Dock="Left" />
+                                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                                                <TextBlock Text="Link 1 Angle (θ₁):" Foreground="{StaticResource TextPrimaryBrush}" FontWeight="SemiBold" FontSize="11" VerticalAlignment="Center" />
+                                                <Label Style="{StaticResource HelpBadge}" ToolTip="{x:Static help:HelpTexts.Theta1}" />
+                                            </StackPanel>
                                             <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
                                                 <TextBlock Text="{Binding ManualTheta1, StringFormat='{}{0:+0.00;-0.00;0.00} rad'}" Foreground="{StaticResource AccentCyanBrush}" FontFamily="Consolas" FontWeight="Bold" FontSize="12" Margin="0,0,4,0" />
                                                 <TextBlock Text="{Binding ManualTheta1Deg, StringFormat='({0:+0.0;-0.0;0.0}°)'}" Foreground="{StaticResource TextSecondaryBrush}" FontFamily="Consolas" FontSize="11" />
@@ -327,7 +370,10 @@
                                 <Border Background="#141724" Padding="10" CornerRadius="4" BorderBrush="#1F2436" BorderThickness="1" Margin="0,0,0,10">
                                     <StackPanel Orientation="Vertical">
                                         <DockPanel LastChildFill="False">
-                                            <TextBlock Text="Link 2 Angle (θ₂):" Foreground="{StaticResource TextPrimaryBrush}" FontWeight="SemiBold" FontSize="11" DockPanel.Dock="Left" />
+                                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                                                <TextBlock Text="Link 2 Angle (θ₂):" Foreground="{StaticResource TextPrimaryBrush}" FontWeight="SemiBold" FontSize="11" VerticalAlignment="Center" />
+                                                <Label Style="{StaticResource HelpBadge}" ToolTip="{x:Static help:HelpTexts.Theta2}" />
+                                            </StackPanel>
                                             <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
                                                 <TextBlock Text="{Binding ManualTheta2, StringFormat='{}{0:+0.00;-0.00;0.00} rad'}" Foreground="{StaticResource AccentAmberBrush}" FontFamily="Consolas" FontWeight="Bold" FontSize="12" Margin="0,0,4,0" />
                                                 <TextBlock Text="{Binding ManualTheta2Deg, StringFormat='({0:+0.0;-0.0;0.0}°)'}" Foreground="{StaticResource TextSecondaryBrush}" FontFamily="Consolas" FontSize="11" />
@@ -349,13 +395,19 @@
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,10">
                             <StackPanel>
                                 <TextBlock Text="CART DISTURBANCE / MANUAL FORCE" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" />
-                                <DockPanel Margin="0,10,0,4">
-                                    <TextBlock Text="Cart force [N]:" Foreground="{StaticResource TextPrimaryBrush}" FontSize="11" FontWeight="SemiBold" DockPanel.Dock="Left" />
+                                <DockPanel Margin="0,10,0,4" LastChildFill="False">
+                                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                                        <TextBlock Text="Cart force [N]:" Foreground="{StaticResource TextPrimaryBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        <Label Style="{StaticResource HelpBadge}" ToolTip="{x:Static help:HelpTexts.CartForce}" />
+                                    </StackPanel>
                                     <TextBlock Text="{Binding CartForce, StringFormat='{}{0:F1} N'}" Foreground="{StaticResource AccentCyanBrush}" FontFamily="Consolas" FontWeight="Bold" FontSize="11" DockPanel.Dock="Right" />
                                 </DockPanel>
                                 <TextBox Text="{Binding CartForce, UpdateSourceTrigger=LostFocus}" Style="{StaticResource LabTextBox}" />
                                 <Slider Minimum="0" Maximum="30" SmallChange="0.5" LargeChange="2" Value="{Binding CartForce}" Style="{StaticResource LabSlider}" Margin="0,6,0,10" />
-                                <TextBlock Text="Continuous cart force (held until Stop / Reset)" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,2,0,4" />
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,4">
+                                    <TextBlock Text="Continuous cart force (held until Stop / Reset)" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center" />
+                                    <Label Style="{StaticResource HelpBadge}" ToolTip="{x:Static help:HelpTexts.ContinuousForce}" />
+                                </StackPanel>
                                 <WrapPanel Margin="0,0,0,12">
                                     <Button Content="Cart ←" Command="{Binding CartLeftCommand}" Style="{StaticResource LabButton}" Margin="0,0,6,0" />
                                     <Button Content="Stop force" Command="{Binding StopCartForceCommand}" Style="{StaticResource LabButton}" Margin="0,0,6,0" />
@@ -363,20 +415,35 @@
                                 </WrapPanel>
                                 <TextBlock Text="{Binding ManualCartForce, StringFormat='Applied continuous cart force: {0:F2} N'}" Foreground="{StaticResource TextMutedBrush}" FontSize="11" Margin="0,0,0,12" />
 
-                                <TextBlock Text="Momentary cart pulse" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,2,0,4" />
-                                <TextBlock Text="Pulse duration [s] (0.001–5)" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,2" />
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,4">
+                                    <TextBlock Text="Momentary cart pulse" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center" />
+                                    <Label Style="{StaticResource HelpBadge}" ToolTip="{x:Static help:HelpTexts.CartPulse}" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                    <TextBlock Text="Pulse duration [s] (0.001–5)" FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                                    <Label Style="{StaticResource HelpBadge}" ToolTip="{x:Static help:HelpTexts.PulseDuration}" />
+                                </StackPanel>
                                 <TextBox Text="{Binding CartPulseDuration, UpdateSourceTrigger=LostFocus}" Style="{StaticResource LabTextBox}" Margin="0,0,0,8" />
                                 <WrapPanel Margin="0,0,0,14" IsEnabled="{Binding IsRunning}">
                                     <Button Content="Pulse Cart ←" Command="{Binding PulseCartLeftCommand}" Style="{StaticResource LabButton}" Margin="0,0,6,0" ToolTip="Apply momentary pulse to the left" />
                                     <Button Content="Pulse Cart →" Command="{Binding PulseCartRightCommand}" Style="{StaticResource LabButton}" ToolTip="Apply momentary pulse to the right" />
                                 </WrapPanel>
                                 <TextBlock Text="LINK DISTURBANCE" FontWeight="Bold" Foreground="{StaticResource AccentAmberBrush}" Margin="0,10,0,8" />
-                                <TextBlock Text="Target (horizontal force at link tip)" TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Target (horizontal force at link tip)" VerticalAlignment="Center" />
+                                    <Label Style="{StaticResource HelpBadge}" ToolTip="{x:Static help:HelpTexts.DisturbanceTarget}" />
+                                </StackPanel>
                                 <ComboBox ItemsSource="{Binding DisturbanceTargets}" SelectedItem="{Binding SelectedDisturbanceTarget}"
                                           Style="{StaticResource LabComboBox}" Margin="0,6,0,10" />
-                                <TextBlock Text="Link force magnitude [N] (0–30)" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Link force magnitude [N] (0–30)" VerticalAlignment="Center" />
+                                    <Label Style="{StaticResource HelpBadge}" ToolTip="{x:Static help:HelpTexts.PushMagnitude}" />
+                                </StackPanel>
                                 <TextBox Text="{Binding PushMagnitude, UpdateSourceTrigger=LostFocus}" Style="{StaticResource LabTextBox}" Margin="0,4,0,10" />
-                                <TextBlock Text="Link push duration [s] (0.001–5)" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Link push duration [s] (0.001–5)" VerticalAlignment="Center" />
+                                    <Label Style="{StaticResource HelpBadge}" ToolTip="{x:Static help:HelpTexts.PushDuration}" />
+                                </StackPanel>
                                 <TextBox Text="{Binding PushDuration, UpdateSourceTrigger=LostFocus}" Style="{StaticResource LabTextBox}" Margin="0,4,0,10" />
                                 <WrapPanel IsEnabled="{Binding IsRunning}">
                                     <Button Content="Push ←" Command="{Binding PushLeftCommand}" Style="{StaticResource LabButton}" Margin="0,0,8,0" />

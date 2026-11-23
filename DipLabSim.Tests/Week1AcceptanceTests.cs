@@ -150,4 +150,21 @@ public class UiAcceptanceTests
         vm.SelectedController = vm.AvailableControllers.First(c => c is OpenLoopController);
         Assert.False(vm.HasControllerParameters);
     });
+    [Fact]
+    public void EverySettingShowsHelpText() => Sta(() =>
+    {
+        using var vm = new MainViewModel();
+        Assert.All(vm.ParameterItems, p => Assert.True(p.HasHelp, p.Key));
+        Assert.All(vm.ParameterItems, p => Assert.Contains("Range:", p.HelpToolTip));
+        // COM distance is limited by the current link length, not the descriptor's 1.5 m maximum.
+        Assert.Contains("0.001 – 0.5 m", vm.ParameterItems.First(p => p.Key == "l1").HelpToolTip);
+        foreach (var controller in vm.AvailableControllers)
+        {
+            Assert.Contains(controller.Name, vm.ControllerOverview);
+            vm.SelectedController = controller;
+            Assert.All(vm.ControllerParameterItems, p => Assert.True(p.HasHelp, $"{controller.Name}: {p.Key}"));
+        }
+        foreach (var plant in vm.AvailablePlants)
+            Assert.Contains(plant.Name, vm.PlantOverview);
+    });
 }

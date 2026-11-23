@@ -23,12 +23,41 @@ public sealed class SwingUpSupervisorController : IController
     // β's range starts above α's, so the exit level is always above the entry level (hysteresis).
     private static readonly ParameterDescriptor[] Descriptors =
     [
-        new("Alpha", "Pre-Gate Factor (V < α·c_sat)", "α", "", Category, 5.0, 1.0, 9.0, 0.1),
-        new("Beta", "Fallback Factor (V > β·c_sat)", "β", "", Category, 10.0, 10.0, 50.0, 0.5),
-        new("HorizonTh", "Capture Test Horizon", "T_h", "s", Category, 1.5, 0.25, 5.0, 0.05),
-        new("Rho", "Required V Decay over T_h", "ρ", "", Category, 0.3, 0.01, 0.99, 0.01),
-        new("DwellTime", "Fallback Dwell Time", "t_dwell", "s", Category, 0.05, 0.0, 0.5, 0.005),
+        new("Alpha", "Pre-Gate Factor (V < α·c_sat)", "α", "", Category, 5.0, 1.0, 9.0, 0.1)
+        {
+            Help = "V measures the distance from upright (all six states). c_sat is the largest V at which the LQR "
+                + "force is guaranteed to stay below u_max. The capture-test prediction (horizon T_h) is only tried when V < α·c_sat. "
+                + "Larger α: more states are tested (more chances to hand over, more computation). Smaller α: "
+                + "hand-over is only tried very close to upright. α alone never causes a switch; the prediction decides."
+        },
+        new("Beta", "Fallback Factor (V > β·c_sat)", "β", "", Category, 10.0, 10.0, 50.0, 0.5)
+        {
+            Help = "While balancing, if V stays above β·c_sat for the dwell time, the supervisor gives up and returns "
+                + "to swing-up. Larger β: bigger disturbances are tolerated before giving up. β is always larger than "
+                + "α (separate ranges), so the controller cannot chatter between the modes."
+        },
+        new("HorizonTh", "Capture Test Horizon", "T_h", "s", Category, 1.5, 0.25, 5.0, 0.05)
+        {
+            Help = "How far ahead the capture test simulates the LQR (in 5 ms steps). Too short: states the LQR could "
+                + "catch, but slowly, fail the decay test. Longer: a more reliable decision, but more computation "
+                + "per test."
+        },
+        new("Rho", "Required V Decay over T_h", "ρ", "", Category, 0.3, 0.01, 0.99, 0.01)
+        {
+            Help = "The predicted V at the end of the horizon must be below ρ times its current value. Smaller ρ: "
+                + "stricter, only fast-converging states are handed over. Larger ρ: more permissive, more hand-overs."
+        },
+        new("DwellTime", "Fallback Dwell Time", "t_dwell", "s", Category, 0.05, 0.0, 0.5, 0.005)
+        {
+            Help = "How long the fallback condition (V > β·c_sat or a link past 90°) must last before returning to "
+                + "swing-up. Longer: short spikes such as a brief push are ignored. Shorter: a real fall is reacted to "
+                + "sooner. 0 = immediately."
+        },
         new("MaxForce", "Saturation Limit", "u_max", "N", Category, 80.0, 5.0, 100.0, 1.0)
+        {
+            Help = "Actuator limit for both the swing-up law and the LQR. It also sets c_sat (c_sat ∝ u_max²), so a "
+                + "lower limit shrinks the region where hand-over is attempted."
+        }
     ];
 
     private static readonly IReadOnlyList<ParameterDescriptor> ReadOnlyDescriptors = Array.AsReadOnly(Descriptors);
@@ -85,7 +114,10 @@ public sealed class SwingUpSupervisorController : IController
 
     public string Name => "Swing-Up Supervisor (Energy PFL → LQR)";
     public string Description =>
-        "Hybrid controller: swing-up law until a Lyapunov pre-gate and a 1.5 s predictive capture test accept the hand-over to LQR; hysteretic fallback to swing-up.";
+        "Hybrid controller for starting from hanging. SwingUp: an energy-shaping law moves the cart to pump energy "
+        + "into the links. Capture: when the state is close to upright, it simulates the LQR T_h seconds ahead (default 1.5 s). Balance: "
+        + "only if that prediction converges does the LQR take over. If the pendulum is knocked over it returns to "
+        + "swing-up. The summary shows the current mode and V/c_sat. Swing-up from hanging is not guaranteed.";
 
     public SupervisorMode Mode => _mode;
     /// <summary>Largest level c_sat = u_max² / (K P⁻¹ Kᵀ) inside which the LQR command stays unsaturated.</summary>

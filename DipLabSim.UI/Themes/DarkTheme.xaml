@@ -297,4 +297,56 @@
         <Setter Property="BorderThickness" Value="1" />
     </Style>
 
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+    <!-- Dark, wrapping tooltips (used by every ToolTip, including the "?" help badges) -->
+    <Style TargetType="ToolTip">
+        <Setter Property="Background" Value="#1C2032" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource BorderHighlightBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="10,8" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="MaxWidth" Value="440" />
+        <Setter Property="ContentTemplate">
+            <Setter.Value>
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" TextWrapping="Wrap" />
+                </DataTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- "?" help badge: hover to read what a setting does. Works while the panel is disabled (running). -->
+    <Style x:Key="HelpBadge" TargetType="Label">
+        <Setter Property="Width" Value="16" />
+        <Setter Property="Height" Value="16" />
+        <Setter Property="Margin" Value="6,0,0,0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Cursor" Value="Help" />
+        <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
+        <Setter Property="ToolTipService.InitialShowDelay" Value="150" />
+        <Setter Property="ToolTipService.BetweenShowDelay" Value="0" />
+        <Setter Property="ToolTipService.ShowDuration" Value="120000" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Label">
+                    <Border x:Name="badge" CornerRadius="8" BorderThickness="1" Background="#1C2032"
+                            BorderBrush="{StaticResource BorderHighlightBrush}">
+                        <TextBlock Text="?" FontSize="10" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="badge" Property="Background" Value="#22385A" />
+                            <Setter TargetName="badge" Property="BorderBrush" Value="{StaticResource AccentCyanBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>

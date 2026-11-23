@@ -28,6 +28,22 @@ public sealed partial class ParameterItemViewModel : ObservableObject
     public double Step => _descriptor.Step;
     public double DefaultValue => _descriptor.DefaultValue;
 
+    public string? Help => _descriptor.Help;
+    public bool HasHelp => !string.IsNullOrWhiteSpace(_descriptor.Help);
+
+    /// <summary>Text of the "?" badge: the explanation plus the allowed range and default value.</summary>
+    public string HelpToolTip
+    {
+        get
+        {
+            string unit = string.IsNullOrWhiteSpace(Unit) ? "" : " " + Unit;
+            string range = string.Format(CultureInfo.InvariantCulture,
+                "Range: {0:0.######} – {1:0.######}{2}   ·   Default: {3:0.######}{2}",
+                MinValue, MaxValue, unit, _descriptor.DefaultValue);
+            return $"{HeaderLabel}\n\n{_descriptor.Help}\n\n{range}";
+        }
+    }
+
     public string HeaderLabel => string.IsNullOrWhiteSpace(_descriptor.Unit)
         ? $"{_descriptor.DisplayName} ({_descriptor.Symbol})"
         : $"{_descriptor.DisplayName} ({_descriptor.Symbol}) [{_descriptor.Unit}]";
@@ -75,6 +91,7 @@ public sealed partial class ParameterItemViewModel : ObservableObject
     public void RefreshFromPlant()
     {
         OnPropertyChanged(nameof(MaxValue));
+        OnPropertyChanged(nameof(HelpToolTip));
         var plantVal = _plant.GetParameter(Key);
         if (Math.Abs(_currentValue - plantVal) > 1e-9)
         {

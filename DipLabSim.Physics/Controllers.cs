@@ -252,7 +252,10 @@ internal static class DpcLinearizer
 public sealed class OpenLoopController : IController
 {
     public string Name => "None (Open-Loop)";
-    public string Description => "No active feedback controller. System evolves freely under manual forces and disturbances.";
+    public string Description =>
+        "No feedback: the controller force is always u = 0. Use it to see the natural dynamics: from a slightly "
+        + "tilted upright state (e.g. Perturbed) the links fall; from a tilted hanging state they swing. Exactly at "
+        + "Upright or Hanging with nothing disturbing them they stay still. Manual cart forces and pushes still act.";
 
     public IReadOnlyList<ParameterDescriptor> GetParameterDescriptors() => Array.Empty<ParameterDescriptor>();
     public double GetParameter(string key) => throw new ArgumentException("Open-loop controller has no parameters.", nameof(key));
@@ -269,16 +272,52 @@ public sealed class OpenLoopController : IController
 /// </summary>
 public sealed class LqrController : IController
 {
+    private const string QNote = " Every change re-solves the Riccati equation; the new gains K appear in the summary above.";
+
     private static readonly ParameterDescriptor[] Descriptors =
     [
-        new("Qx", "Cart Position Weight", "Qₓ", "", "1. State Cost Weights (Q)", 12.0, 0.1, 500.0, 0.5),
-        new("QTheta1", "Lower Link Angle Weight", "Q_θ₁", "", "1. State Cost Weights (Q)", 60.0, 1.0, 2000.0, 5.0),
-        new("QTheta2", "Upper Link Angle Weight", "Q_θ₂", "", "1. State Cost Weights (Q)", 120.0, 1.0, 2000.0, 5.0),
-        new("QDx", "Cart Velocity Weight", "Q_dx", "", "1. State Cost Weights (Q)", 8.0, 0.0, 500.0, 0.5),
-        new("QDTheta1", "Lower Link Angular Vel. Weight", "Q_dθ₁", "", "1. State Cost Weights (Q)", 6.0, 0.0, 500.0, 0.5),
-        new("QDTheta2", "Upper Link Angular Vel. Weight", "Q_dθ₂", "", "1. State Cost Weights (Q)", 12.0, 0.0, 500.0, 0.5),
-        new("R", "Control Effort Weight", "R", "", "2. Control Weight & Limits", 1.0, 0.01, 50.0, 0.05),
+        new("Qx", "Cart Position Weight", "Qₓ", "", "1. State Cost Weights (Q)", 12.0, 0.1, 500.0, 0.5)
+        {
+            Help = "How much the LQR penalises the cart being away from x = 0. Larger: the cart is pulled back to the "
+                + "centre more firmly, at the cost of larger forces and angle excursions." + QNote
+        },
+        new("QTheta1", "Lower Link Angle Weight", "Q_θ₁", "", "1. State Cost Weights (Q)", 60.0, 1.0, 2000.0, 5.0)
+        {
+            Help = "How much the LQR penalises the lower link leaning away from upright. Larger: the lower link is "
+                + "held straighter with a more aggressive force." + QNote
+        },
+        new("QTheta2", "Upper Link Angle Weight", "Q_θ₂", "", "1. State Cost Weights (Q)", 120.0, 1.0, 2000.0, 5.0)
+        {
+            Help = "How much the LQR penalises the upper link leaning away from upright. Larger: the upper link is "
+                + "held straighter with a more aggressive force." + QNote
+        },
+        new("QDx", "Cart Velocity Weight", "Q_dx", "", "1. State Cost Weights (Q)", 8.0, 0.0, 500.0, 0.5)
+        {
+            Help = "Penalty on cart velocity. Acts like damping on the cart motion: larger values give slower, "
+                + "less oscillatory cart movement." + QNote
+        },
+        new("QDTheta1", "Lower Link Angular Vel. Weight", "Q_dθ₁", "", "1. State Cost Weights (Q)", 6.0, 0.0, 500.0, 0.5)
+        {
+            Help = "Penalty on the lower link's angular velocity. Acts like damping on the lower link: larger values "
+                + "reduce its swinging and overshoot." + QNote
+        },
+        new("QDTheta2", "Upper Link Angular Vel. Weight", "Q_dθ₂", "", "1. State Cost Weights (Q)", 12.0, 0.0, 500.0, 0.5)
+        {
+            Help = "Penalty on the upper link's angular velocity. Acts like damping on the upper link: larger values "
+                + "reduce its swinging and overshoot." + QNote
+        },
+        new("R", "Control Effort Weight", "R", "", "2. Control Weight & Limits", 1.0, 0.01, 50.0, 0.05)
+        {
+            Help = "Penalty on the control force. Larger R: gentler, smaller forces and a slower response. Smaller R: "
+                + "a faster, more aggressive response that reaches the force limit sooner. Only the ratio between "
+                + "Q and R matters." + QNote
+        },
         new("MaxForce", "Saturation Limit", "u_max", "N", "2. Control Weight & Limits", 80.0, 5.0, 100.0, 1.0)
+        {
+            Help = "Actuator limit: the controller's force is clipped to ±u_max. The LQR design does not know about "
+                + "this limit, so with a low value large disturbances can no longer be rejected. "
+                + "The simulator also clips the total force (controller + manual) to ±100 N."
+        }
     ];
 
     private static readonly IReadOnlyList<ParameterDescriptor> ReadOnlyDescriptors = Array.AsReadOnly(Descriptors);
@@ -288,7 +327,10 @@ public sealed class LqrController : IController
     private double _maxForce = 80.0;
 
     public string Name => "LQR (Linear Quadratic Regulator)";
-    public string Description => "Optimal full-state feedback (u = -Kz) solved from the linearized upright DIPC model.";
+    public string Description =>
+        "Full-state feedback u = −K·z using all six states (x, θ₁, θ₂ and their rates). K is the optimal gain for "
+        + "the model linearized at upright, found from the Riccati equation for your Q (state) and R (effort) "
+        + "weights. It only works near upright and cannot swing the pendulum up from hanging.";
 
     public ReadOnlySpan<double> Gains => new([_kx, _kTheta1, _kTheta2, _kDx, _kDTheta1, _kDTheta2]);
 
@@ -441,21 +483,63 @@ public sealed class CascadePidController : IController
 
     private static readonly CascadeDecomposition DefaultBaseline = ComputeOptimalCascade(DpcLinearizer.DefaultPlantParameters);
 
+    private const string CouplingNote =
+        " The three loops are coupled, so changing one gain by hand can destabilise the others; "
+        + "Auto-Calculate restores a consistent set (and is applied automatically when a plant parameter changes).";
+
     private static readonly ParameterDescriptor[] Descriptors =
     [
-        new("KpX", "Outer Cart Proportional", "Kp_x", "rad/m", "1. Outer Loop (Cart x → θ₂*)", Math.Round(DefaultBaseline.KpX, 4), 0.0001, 2.0, 0.001),
-        new("KiX", "Outer Cart Integral", "Ki_x", "rad/(m·s)", "1. Outer Loop (Cart x → θ₂*)", 0.0, 0.0, 0.5, 0.0005),
-        new("KdX", "Outer Cart Derivative", "Kd_x", "rad·s/m", "1. Outer Loop (Cart x → θ₂*)", Math.Round(DefaultBaseline.KdX, 4), 0.0001, 2.0, 0.001),
+        new("KpX", "Outer Cart Proportional", "Kp_x", "rad/m", "1. Outer Loop (Cart x → θ₂*)", Math.Round(DefaultBaseline.KpX, 4), 0.0001, 2.0, 0.001)
+        {
+            Help = "Outer loop: how many radians of upper-link target angle θ₂* are requested per metre of cart "
+                + "position error. Larger: the cart returns to x = 0 faster; too large can cause oscillation." + CouplingNote
+        },
+        new("KiX", "Outer Cart Integral", "Ki_x", "rad/(m·s)", "1. Outer Loop (Cart x → θ₂*)", 0.0, 0.0, 0.5, 0.0005)
+        {
+            Help = "Outer loop integral action on the cart position error (0 = off). It reduces the steady cart "
+                + "offset under a constant disturbance such as a continuous manual cart force (its contribution is "
+                + "limited, so it may not remove it fully); too large can cause slow oscillation." + CouplingNote
+        },
+        new("KdX", "Outer Cart Derivative", "Kd_x", "rad·s/m", "1. Outer Loop (Cart x → θ₂*)", Math.Round(DefaultBaseline.KdX, 4), 0.0001, 2.0, 0.001)
+        {
+            Help = "Outer loop derivative action: reacts to cart velocity and damps the cart's motion." + CouplingNote
+        },
 
-        new("Kp2", "Middle Link 2 Proportional", "Kp_2", "rad/rad", "2. Middle Loop (Link 2 θ₂ → θ₁*)", Math.Round(DefaultBaseline.Kp2, 3), 0.05, 20.0, 0.02),
-        new("Ki2", "Middle Link 2 Integral", "Ki_2", "1/s", "2. Middle Loop (Link 2 θ₂ → θ₁*)", 0.0, 0.0, 5.0, 0.01),
-        new("Kd2", "Middle Link 2 Derivative", "Kd_2", "s", "2. Middle Loop (Link 2 θ₂ → θ₁*)", Math.Round(DefaultBaseline.Kd2, 4), 0.005, 5.0, 0.005),
+        new("Kp2", "Middle Link 2 Proportional", "Kp_2", "rad/rad", "2. Middle Loop (Link 2 θ₂ → θ₁*)", Math.Round(DefaultBaseline.Kp2, 3), 0.05, 20.0, 0.02)
+        {
+            Help = "Middle loop: how strongly the upper-link error (θ₂ − θ₂*) sets the lower-link target angle θ₁*. "
+                + "This is how the lower link is tilted to bring the upper link back." + CouplingNote
+        },
+        new("Ki2", "Middle Link 2 Integral", "Ki_2", "1/s", "2. Middle Loop (Link 2 θ₂ → θ₁*)", 0.0, 0.0, 5.0, 0.01)
+        {
+            Help = "Middle loop integral action on the upper-link error (0 = off). Removes a steady lean of the "
+                + "upper link; too large can cause slow oscillation." + CouplingNote
+        },
+        new("Kd2", "Middle Link 2 Derivative", "Kd_2", "s", "2. Middle Loop (Link 2 θ₂ → θ₁*)", Math.Round(DefaultBaseline.Kd2, 4), 0.005, 5.0, 0.005)
+        {
+            Help = "Middle loop derivative action: reacts to the upper link's angular velocity and damps its swinging." + CouplingNote
+        },
 
-        new("Kp1", "Inner Link 1 Proportional", "Kp_1", "N/rad", "3. Inner Loop (Link 1 θ₁ → u)", Math.Round(DefaultBaseline.Kp1, 2), 5.0, 5000.0, 2.0),
-        new("Ki1", "Inner Link 1 Integral", "Ki_1", "N/(rad·s)", "3. Inner Loop (Link 1 θ₁ → u)", 0.0, 0.0, 50.0, 0.5),
-        new("Kd1", "Inner Link 1 Derivative", "Kd_1", "N·s/rad", "3. Inner Loop (Link 1 θ₁ → u)", Math.Round(DefaultBaseline.Kd1, 2), 0.5, 1000.0, 0.5),
+        new("Kp1", "Inner Link 1 Proportional", "Kp_1", "N/rad", "3. Inner Loop (Link 1 θ₁ → u)", Math.Round(DefaultBaseline.Kp1, 2), 5.0, 5000.0, 2.0)
+        {
+            Help = "Inner loop: cart force per radian of lower-link error (θ₁ − θ₁*). This is the fastest loop and "
+                + "does the actual balancing; too small and the pendulum falls." + CouplingNote
+        },
+        new("Ki1", "Inner Link 1 Integral", "Ki_1", "N/(rad·s)", "3. Inner Loop (Link 1 θ₁ → u)", 0.0, 0.0, 50.0, 0.5)
+        {
+            Help = "Inner loop integral action on the lower-link error (0 = off)." + CouplingNote
+        },
+        new("Kd1", "Inner Link 1 Derivative", "Kd_1", "N·s/rad", "3. Inner Loop (Link 1 θ₁ → u)", Math.Round(DefaultBaseline.Kd1, 2), 0.5, 1000.0, 0.5)
+        {
+            Help = "Inner loop derivative action: cart force per rad/s of lower-link angular velocity. Damps the "
+                + "lower link's motion." + CouplingNote
+        },
 
         new("MaxForce", "Saturation Limit", "u_max", "N", "4. Output Limits", 80.0, 5.0, 100.0, 1.0)
+        {
+            Help = "Actuator limit: the controller's force is clipped to ±u_max. With a low value large disturbances "
+                + "can no longer be rejected. The simulator also clips the total force (controller + manual) to ±100 N."
+        }
     ];
 
     private static readonly IReadOnlyList<ParameterDescriptor> ReadOnlyDescriptors = Array.AsReadOnly(Descriptors);
@@ -475,7 +559,11 @@ public sealed class CascadePidController : IController
     private double _integralTheta1;
 
     public string Name => "Cascade PID (Cart → Link 2 → Link 1)";
-    public string Description => "Three-stage cascaded PID architecture: Outer Cart PID sets virtual Link 2 reference θ₂*; Middle Link 2 PID sets virtual Link 1 reference θ₁*; Inner Link 1 PID outputs cart force u.";
+    public string Description =>
+        "Three nested PID loops: the outer loop turns cart position error into a target angle θ₂* for the upper "
+        + "link, the middle loop turns the upper-link error into a target angle θ₁* for the lower link, and the inner "
+        + "loop turns the lower-link error into the cart force u. The default gains are derived from an LQR design, "
+        + "so it behaves much like the LQR, but each loop can be tuned on its own. It only works near upright.";
 
     public string GainsSummary =>
         $"Outer(Kp:{_kpX:F4}, Kd:{_kdX:F4}) → Mid(Kp:{_kp2:F3}, Kd:{_kd2:F4}) → Inner(Kp:{_kp1:F1}, Kd:{_kd1:F2})";
