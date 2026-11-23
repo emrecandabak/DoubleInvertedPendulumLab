@@ -19,6 +19,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private readonly DoublePendulumPlant _model2 = new NewtonEulerPlant();
     private readonly LqrController _lqrController = new();
     private readonly CascadePidController _cascadePidController = new();
+    private readonly SwingUpSupervisorController _swingUpSupervisor = new();
     private readonly OpenLoopController _openLoopController = new();
 
     [ObservableProperty] private DoublePendulumPlant _currentPlant;
@@ -64,6 +65,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         LqrController lqr => lqr.GainsSummary,
         CascadePidController pid => pid.GainsSummary,
+        SwingUpSupervisorController supervisor => supervisor.GainsSummary,
         _ => "Open-loop mode (u = 0 N)"
     };
     public SimulationService PreviewService => _simulation;
@@ -84,6 +86,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         AvailablePlants.Add(_model2);
         AvailableControllers.Add(_lqrController);
         AvailableControllers.Add(_cascadePidController);
+        AvailableControllers.Add(_swingUpSupervisor);
         AvailableControllers.Add(_openLoopController);
 
         ParameterItemsView = CollectionViewSource.GetDefaultView(ParameterItems);
@@ -215,6 +218,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         ControlForceU = frame.ControlForceU; DisturbanceForce = frame.DisturbanceForce;
         ActiveDisturbanceTarget = frame.DisturbanceTarget;
         OnPropertyChanged(nameof(CurrentState));
+        // Supervisor mode and V/c_sat change while running.
+        if (SelectedController is SwingUpSupervisorController) OnPropertyChanged(nameof(ControllerGainsSummary));
     }
     private void OnEngineStateChanged()
     {
@@ -283,6 +288,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             lqr.AutoCalculateOptimalParameters(dict);
         else if (SelectedController is CascadePidController pid)
             pid.AutoCalculateOptimalParameters(dict);
+        else if (SelectedController is SwingUpSupervisorController supervisor)
+            supervisor.AutoCalculateOptimalParameters(dict);
         foreach (var item in ControllerParameterItems) item.RefreshFromPlant();
         OnPropertyChanged(nameof(ControllerGainsSummary));
         StatusMessage = $"Auto-calculated optimal {SelectedController.Name} parameters for current plant model";
@@ -292,6 +299,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (IsRunning) return;
         if (SelectedController is LqrController lqr) lqr.ResetParametersToDefaults();
         else if (SelectedController is CascadePidController pid) pid.ResetParametersToDefaults();
+        else if (SelectedController is SwingUpSupervisorController supervisor) supervisor.ResetParametersToDefaults();
         foreach (var item in ControllerParameterItems) item.RefreshFromPlant();
         OnPropertyChanged(nameof(ControllerGainsSummary));
         Configure();
@@ -307,6 +315,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _simulation.Dispose();
         _lqrController.Dispose();
         _cascadePidController.Dispose();
+        _swingUpSupervisor.Dispose();
         _openLoopController.Dispose();
     }
 }

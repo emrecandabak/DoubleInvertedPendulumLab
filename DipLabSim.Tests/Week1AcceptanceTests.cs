@@ -115,9 +115,10 @@ public class UiAcceptanceTests
     public void IntegratedLqrAndCascadePidControllersAreSelectableAndConfigurable() => Sta(() =>
     {
         using var vm = new MainViewModel();
-        Assert.Equal(3, vm.AvailableControllers.Count);
+        Assert.Equal(4, vm.AvailableControllers.Count);
         Assert.Contains(vm.AvailableControllers, c => c is LqrController);
         Assert.Contains(vm.AvailableControllers, c => c is CascadePidController);
+        Assert.Contains(vm.AvailableControllers, c => c is SwingUpSupervisorController);
         Assert.Contains(vm.AvailableControllers, c => c is OpenLoopController);
 
         Assert.IsType<LqrController>(vm.SelectedController);
@@ -140,6 +141,11 @@ public class UiAcceptanceTests
         vm.AutoCalculateControllerParametersCommand.Execute(null);
         double updatedKp1 = vm.ControllerParameterItems.First(p => p.Key == "Kp1").Value;
         Assert.NotEqual(defaultKp1, updatedKp1);
+
+        vm.SelectedController = vm.AvailableControllers.First(c => c is SwingUpSupervisorController);
+        string[] supervisorKeys = ["Alpha", "Beta", "HorizonTh", "Rho", "DwellTime", "MaxForce"];
+        Assert.Equal(supervisorKeys, vm.ControllerParameterItems.Select(p => p.Key).ToArray());
+        Assert.Contains("V/c_sat", vm.ControllerGainsSummary);
 
         vm.SelectedController = vm.AvailableControllers.First(c => c is OpenLoopController);
         Assert.False(vm.HasControllerParameters);

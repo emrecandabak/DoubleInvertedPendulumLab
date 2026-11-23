@@ -13,6 +13,8 @@ public class ControllerTests
         yield return [new LqrController(), new NewtonEulerPlant()];
         yield return [new CascadePidController(), new NonlinearEulerLagrangePlant()];
         yield return [new CascadePidController(), new NewtonEulerPlant()];
+        yield return [new SwingUpSupervisorController(), new NonlinearEulerLagrangePlant()];
+        yield return [new SwingUpSupervisorController(), new NewtonEulerPlant()];
     }
 
     [Theory]

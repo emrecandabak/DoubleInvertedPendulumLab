@@ -100,11 +100,14 @@ internal static class DpcLinearizer
         bVec[5] = a13 * invDet;
     }
 
+    /// <summary>Solves the discrete Riccati equation for K. When <paramref name="pOut"/> holds at
+    /// least 36 elements, the converged row-major 6x6 Riccati matrix P is copied into it.</summary>
     public static void SolveLqrGains(
         IReadOnlyDictionary<string, double> plantParameters,
         ReadOnlySpan<double> qDiag,
         double rWeight,
-        Span<double> kOut)
+        Span<double> kOut,
+        Span<double> pOut = default)
     {
         Span<double> a = stackalloc double[36];
         Span<double> b = stackalloc double[6];
@@ -213,6 +216,10 @@ internal static class DpcLinearizer
                 for (int j = 0; j < 6; j++)
                     p[i * 6 + j] = 0.5 * (pNext[i * 6 + j] + pNext[j * 6 + i]);
         }
+
+        // On convergence (break above), p is the matrix the final kOut was computed from.
+        if (pOut.Length >= 36)
+            p.CopyTo(pOut);
     }
 
     private static void Multiply6x6(ReadOnlySpan<double> a, ReadOnlySpan<double> b, Span<double> result)
