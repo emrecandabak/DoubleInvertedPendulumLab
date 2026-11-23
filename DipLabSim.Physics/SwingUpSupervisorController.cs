@@ -302,14 +302,17 @@ public sealed class SwingUpSupervisorController : IController
         }
     }
 
-    // Copies the plant parameters into the shadow plant; L1/L2 before l1/l2 so COM <= length holds.
+    // Copies the plant parameters into the shadow plant; L1/L2 before l1/l2, and COM distances are
+    // clamped to the link length (as the LQR linearization does) so a partial update cannot throw.
     private void ConfigureShadowPlant()
     {
         foreach (var d in _shadowPlant.GetParameterDescriptors())
             if (d.Key != "l1" && d.Key != "l2" && _plantParameters.TryGetValue(d.Key, out double value))
                 _shadowPlant.SetParameter(d.Key, value);
-        if (_plantParameters.TryGetValue("l1", out double l1)) _shadowPlant.SetParameter("l1", l1);
-        if (_plantParameters.TryGetValue("l2", out double l2)) _shadowPlant.SetParameter("l2", l2);
+        if (_plantParameters.TryGetValue("l1", out double l1))
+            _shadowPlant.SetParameter("l1", Math.Min(l1, _shadowPlant.GetParameter("L1")));
+        if (_plantParameters.TryGetValue("l2", out double l2))
+            _shadowPlant.SetParameter("l2", Math.Min(l2, _shadowPlant.GetParameter("L2")));
     }
 
     // Same Q, R and plant as the inner LQR, so K here equals the LQR's gains and P is its Riccati matrix.

@@ -146,7 +146,8 @@ public class SwingUpSupervisorTests
 
         Assert.Equal(0, allocated);
         Assert.True(sawSwingUp && sawCapture && sawBalance);
-        // Repeated 300-step shadow simulations were inside the measured window.
+        // Repeated shadow simulations ran inside the measured window: the rejected ones stop early
+        // at the cart limit, and the accepted slow-state test runs the full horizon.
         Assert.True(supervisor.CaptureTestCount >= 30, $"Only {supervisor.CaptureTestCount} capture tests ran.");
     }
 
